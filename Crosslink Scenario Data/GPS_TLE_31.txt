@@ -1,0 +1,61 @@
+BIIR-2 F-6
+
+BIIR-3 D-5 
+
+BIIR-4 B-6  
+
+BIIR-5 B-3   
+
+BIIR-6 F-5 
+
+BIIR-7 E-4 
+
+BIIR-8 B-1   
+
+BIIR-9 D-3  
+
+BIIR-10 E-6    
+
+BIIR-11 C-5  
+
+BIIR-12 F-4  
+
+BIIR-13 D-1   
+
+BIIRM-1 C-4  
+
+BIIRM-2 A-2    
+
+BIIRM-3 B-4    
+
+BIIRM-4 F-2    
+
+BIIRM-5 C-1    
+
+BIIRM-6 A-4   
+
+BIIRM-8 E-3    
+
+BIIF-1 B-2   
+
+BIIF-2 D-2   
+
+BIIF-3 A-1   
+
+BIIF-4 C-2    
+
+BIIF-5 A-3    
+
+BIIF-6 D-4    
+
+BIIF-7 F-3    
+
+BIIF-8 E-1    
+
+BIIF-9 B-5    
+
+BIIF-10 C-3    
+
+BIIF-11 E-2   
+
+BIIF-12 F-1   
