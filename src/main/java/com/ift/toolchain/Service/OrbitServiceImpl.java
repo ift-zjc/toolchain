@@ -16,4 +16,19 @@ public class OrbitServiceImpl implements OrbitService {
     public Orbit save(Orbit orbit) {
         return orbitRepository.save(orbit);
     }
+
+    @Override
+    public Orbit save(String orbitName, int orbitOrder) {
+
+        Orbit orbit = new Orbit();
+        orbit.setName(orbitName);
+        orbit.setOrbitOrder(orbitOrder);
+
+        return save(orbit);
+    }
+
+    @Override
+    public Orbit findByName(String orbitName) {
+        return orbitRepository.findOrbitByName(orbitName);
+    }
 }

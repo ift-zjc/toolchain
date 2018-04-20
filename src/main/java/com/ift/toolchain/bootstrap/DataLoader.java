@@ -1,5 +1,6 @@
 package com.ift.toolchain.bootstrap;
 
+import com.ift.toolchain.Service.DataInitService;
 import com.ift.toolchain.Service.OrbitService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
@@ -18,24 +19,48 @@ import java.util.stream.Collectors;
 public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
 
     @Autowired
-    OrbitService orbitService;
+    DataInitService dataInitService;
 
     @Override
     public void onApplicationEvent(ContextRefreshedEvent contextRefreshedEvent) {
 
         // Read Orbit info
 
-        String orbitFileName = "/Users/lastcow/Projects/toolchain/Crosslink Scenario Data/GPS_TLE_31.txt";
-        List<String> list = new ArrayList<>();
+        String orbitFileName = "C:\\Users\\Zhijiang Chen\\Documents\\toolchain\\Crosslink Scenario Data\\GPS_TLE_31.txt";
+        String satellitePositionFolder = "C:\\Users\\Zhijiang Chen\\Documents\\toolchain\\Crosslink Scenario Data\\Orbit Information";
+        List<String> orbitSatellites = new ArrayList<>();
 
         try (BufferedReader br = Files.newBufferedReader(Paths.get(orbitFileName))){
 
-            list = br.lines().filter(line -> !(line == null || line.length() ==0)).collect(Collectors.toList());
+            orbitSatellites = br.lines().filter(line -> !(line == null || line.length() ==0)).collect(Collectors.toList());
         }catch (IOException e){
             e.printStackTrace();
         }
 
-        list.forEach(System.out :: println);
+        orbitSatellites.forEach(orbitSatellite -> {
+            String[] orbSat = orbitSatellite.split(" ");
+            String satellite = orbSat[0];
+
+            String[] orb = orbSat[1].split("-");
+
+            String orbName = orb[0];
+            int satelliteOrder = Integer.parseInt(orb[1]);
+
+            dataInitService.initOrbitSatellite(orbName, satellite, satelliteOrder);
+
+            System.out.println(satellite + " " + orbName+"-"+satelliteOrder);
+        });
+
+        // Satellite Position data
+        try {
+            Files.list(Paths.get(satellitePositionFolder))
+                    .filter(Files::isRegularFile)
+                    .forEach(fileName -> {
+                        System.out.println(fileName);
+                    });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
     }
 }

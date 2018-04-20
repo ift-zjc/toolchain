@@ -7,4 +7,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface OrbitRepository extends JpaRepository<Orbit, String> {
 
+    public Orbit findOrbitByName(String name);
+
 }
