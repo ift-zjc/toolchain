@@ -27,7 +27,7 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
 //        // Read Orbit info
 //
 //        String orbitFileName = "C:\\Users\\Zhijiang Chen\\Documents\\toolchain\\Crosslink Scenario Data\\GPS_TLE_31.txt";
-//        String satellitePositionFolder = "C:\\Users\\Zhijiang Chen\\Documents\\toolchain\\Crosslink Scenario Data\\Orbit Information";
+        String satellitePositionFolder = "/home/ift/Projects/toolchain/Crosslink Scenario Data/Orbit Information";
 //        List<String> orbitSatellites = new ArrayList<>();
 //
 //        try (BufferedReader br = Files.newBufferedReader(Paths.get(orbitFileName))){
@@ -52,15 +52,24 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
 //        });
 //
 //        // Satellite Position data
-//        try {
-//            Files.list(Paths.get(satellitePositionFolder))
-//                    .filter(Files::isRegularFile)
-//                    .forEach(fileName -> {
-//                        System.out.println(fileName);
-//                    });
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
+        try {
+            Files.list(Paths.get(satellitePositionFolder))
+                    .filter(Files::isRegularFile)
+                    .forEach(fileName -> {
+                        try (BufferedReader br = Files.newBufferedReader(fileName)) {
+//
+                            List<String> orbitSatellites = br.lines().skip(7).limit(1440)
+                            .filter(
+                                    line -> !(line == null ||line.trim().length() == 0))
+                                    .collect(Collectors.toList());
+                            System.out.println("");
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 //
     }
 }
