@@ -16,7 +16,7 @@ spring:
 
 zjc:
   kafka:
-    bootstrap-servers: dev.ift:9092
+    bootstrap-servers: localhost:9092
     topic: test-topic-1
     consumer:
       group-id: test-consumer-group
