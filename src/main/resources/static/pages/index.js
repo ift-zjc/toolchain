@@ -75,12 +75,13 @@ function addSatellite(satelliteName, satelliteData){
     var positions = new Cesium.SampledPositionProperty();
     _.each(satelliteData, function(data){
 
+
         // Add point as sample
-        positions.addSample(entityTime,
+        positions.addSample(Cesium.JulianDate.clone(entityTime),
             Cesium.Cartesian3.fromArray(data.cartesian3));
 
         // 60" for each record
-        Cesium.JulianDate.addSeconds(entityTime, 60, entityTime);
+        Cesium.JulianDate.addSeconds(entityTime, 10, entityTime);
     });
 
     newEntity.position = positions;
