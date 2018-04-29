@@ -24,7 +24,7 @@ public class SatelliteController {
     public Map<String, List<SatelliteDto>> initSatelliteData(){
 
         SatelliteCollection satelliteCollection = new SatelliteCollection();
-        String satellitePositionFolder = "/Users/lastcow/Projects/toolchain/Crosslink Scenario Data/Orbit Information";
+        String satellitePositionFolder = "/Users/lastcow_chen/Projects/toolchain/Crosslink Scenario Data/Orbit Information";
         Map<String, List<SatelliteDto>> satelliteDtoMap = new HashMap<>();
         try {
             Files.list(Paths.get(satellitePositionFolder))
@@ -39,9 +39,7 @@ public class SatelliteController {
                                     .map(line -> {
                                         String[] lineData = line.split(",");
                                         try {
-                                            double[] cartesian3 = CommonUtil.ecef2lla(Double.parseDouble(lineData[1])*1000,
-                                                    Double.parseDouble(lineData[2])*1000,
-                                                    Double.parseDouble(lineData[3])*1000);
+                                            double[] cartesian3 = {Double.parseDouble(lineData[1])*1000, Double.parseDouble(lineData[2])*1000, Double.parseDouble(lineData[3])*1000};
                                             return new SatelliteDto((long)Double.parseDouble(lineData[0]), cartesian3);
                                         }catch (NumberFormatException ex){
 

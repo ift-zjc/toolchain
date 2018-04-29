@@ -81,7 +81,7 @@ function addSatellite(satelliteName, satelliteData){
             Cesium.Cartesian3.fromArray(data.cartesian3));
 
         // 60" for each record
-        Cesium.JulianDate.addSeconds(entityTime, 10, entityTime);
+        Cesium.JulianDate.addSeconds(entityTime, 60, entityTime);
     });
 
     newEntity.position = positions;
@@ -91,7 +91,7 @@ function addSatellite(satelliteName, satelliteData){
         var path = new Cesium.PathGraphics();
         path.material = fadedLine;
         path.leadTime = new Cesium.ConstantProperty(0);
-        path.trailTime = new Cesium.ConstantProperty(3600 * 1);
+        path.trailTime = new Cesium.ConstantProperty(3600 * 24);
 
         newEntity.path = path;
     }
