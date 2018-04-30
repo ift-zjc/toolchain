@@ -9,5 +9,5 @@ public class SatelliteDto {
 
     long time;
     double[] cartesian3;
-    String orbName;
+    //String orbName;
 }

@@ -26,7 +26,7 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
 
         // Read Orbit info
 
-        String orbitFileName = "/Users/zhijiangchen/IdeaProjects/toolchain/Crosslink Scenario Data/GPS_TLE_31.txt";
+        String orbitFileName = "C:\\Users\\zhijiang\\Documents\\Projects\\toolchain\\Crosslink Scenario Data\\GPS_TLE_31.txt";
 //        String satellitePositionFolder = "/home/ift/Projects/toolchain/Crosslink Scenario Data/Orbit Information";
 //        String satellitePositionFolder = "/Users/lastcow/Projects/toolchain/Crosslink Scenario Data/Orbit Information";
         List<String> orbitSatellites = new ArrayList<>();

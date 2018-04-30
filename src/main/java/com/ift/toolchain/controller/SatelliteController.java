@@ -29,7 +29,7 @@ public class SatelliteController {
     public Map<String, List<SatelliteDto>> initSatelliteData(){
 
         SatelliteCollection satelliteCollection = new SatelliteCollection();
-        String satellitePositionFolder = "/Users/zhijiangchen/IdeaProjects/toolchain/Crosslink Scenario Data/Orbit Information";
+        String satellitePositionFolder = "C:\\Users\\zhijiang\\Documents\\Projects\\toolchain\\Crosslink Scenario Data\\Orbit Information\\test";
         Map<String, List<SatelliteDto>> satelliteDtoMap = new HashMap<>();
         try {
             Files.list(Paths.get(satellitePositionFolder))
@@ -45,9 +45,9 @@ public class SatelliteController {
                                         String[] lineData = line.split(",");
                                         try {
                                             // Get orb name for this satellite
-                                            Satellite satellite = satelliteService.findByName(satelliteName);
+                                            //Satellite satellite = satelliteService.findByName(satelliteName);
                                             double[] cartesian3 = {Double.parseDouble(lineData[1])*1000, Double.parseDouble(lineData[2])*1000, Double.parseDouble(lineData[3])*1000};
-                                            return new SatelliteDto((long)Double.parseDouble(lineData[0]), cartesian3, satellite.getOrbit().getName());
+                                            return new SatelliteDto((long)Double.parseDouble(lineData[0]), cartesian3) ;//, satellite.getOrbit().getName());
                                         }catch (NumberFormatException ex){
 
                                         }
