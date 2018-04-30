@@ -22,8 +22,6 @@ public class SatellitePosition {
     @JoinColumn(name = "satellite_id")
     private Satellite satellite;
 
-    private double x;
-    private double y;
-    private double z;
+    private double[] cartesian3;
 
 }

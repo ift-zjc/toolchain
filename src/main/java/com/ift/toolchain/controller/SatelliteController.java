@@ -1,9 +1,12 @@
 package com.ift.toolchain.controller;
 
 
+import com.ift.toolchain.Service.SatelliteService;
 import com.ift.toolchain.dto.SatelliteCollection;
 import com.ift.toolchain.dto.SatelliteDto;
+import com.ift.toolchain.model.Satellite;
 import com.ift.toolchain.util.CommonUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,12 +22,14 @@ import java.util.stream.Collectors;
 @RestController
 public class SatelliteController {
 
+    @Autowired
+    SatelliteService satelliteService;
 
     @GetMapping(value = "/api/satellite/init")
     public Map<String, List<SatelliteDto>> initSatelliteData(){
 
         SatelliteCollection satelliteCollection = new SatelliteCollection();
-        String satellitePositionFolder = "/Users/lastcow_chen/Projects/toolchain/Crosslink Scenario Data/Orbit Information";
+        String satellitePositionFolder = "/Users/zhijiangchen/IdeaProjects/toolchain/Crosslink Scenario Data/Orbit Information";
         Map<String, List<SatelliteDto>> satelliteDtoMap = new HashMap<>();
         try {
             Files.list(Paths.get(satellitePositionFolder))
@@ -39,8 +44,10 @@ public class SatelliteController {
                                     .map(line -> {
                                         String[] lineData = line.split(",");
                                         try {
+                                            // Get orb name for this satellite
+                                            Satellite satellite = satelliteService.findByName(satelliteName);
                                             double[] cartesian3 = {Double.parseDouble(lineData[1])*1000, Double.parseDouble(lineData[2])*1000, Double.parseDouble(lineData[3])*1000};
-                                            return new SatelliteDto((long)Double.parseDouble(lineData[0]), cartesian3);
+                                            return new SatelliteDto((long)Double.parseDouble(lineData[0]), cartesian3, satellite.getOrbit().getName());
                                         }catch (NumberFormatException ex){
 
                                         }

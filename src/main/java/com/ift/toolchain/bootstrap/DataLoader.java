@@ -24,34 +24,34 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
     @Override
     public void onApplicationEvent(ContextRefreshedEvent contextRefreshedEvent) {
 
-//        // Read Orbit info
-//
-//        String orbitFileName = "C:\\Users\\Zhijiang Chen\\Documents\\toolchain\\Crosslink Scenario Data\\GPS_TLE_31.txt";
+        // Read Orbit info
+
+        String orbitFileName = "/Users/zhijiangchen/IdeaProjects/toolchain/Crosslink Scenario Data/GPS_TLE_31.txt";
 //        String satellitePositionFolder = "/home/ift/Projects/toolchain/Crosslink Scenario Data/Orbit Information";
 //        String satellitePositionFolder = "/Users/lastcow/Projects/toolchain/Crosslink Scenario Data/Orbit Information";
-//        List<String> orbitSatellites = new ArrayList<>();
-//
-//        try (BufferedReader br = Files.newBufferedReader(Paths.get(orbitFileName))){
-//
-//            orbitSatellites = br.lines().filter(line -> !(line == null || line.length() ==0)).collect(Collectors.toList());
-//        }catch (IOException e){
-//            e.printStackTrace();
-//        }
-//
-//        orbitSatellites.forEach(orbitSatellite -> {
-//            String[] orbSat = orbitSatellite.split(" ");
-//            String satellite = orbSat[0];
-//
-//            String[] orb = orbSat[1].split("-");
-//
-//            String orbName = orb[0];
-//            int satelliteOrder = Integer.parseInt(orb[1]);
-//
-//            dataInitService.initOrbitSatellite(orbName, satellite, satelliteOrder);
-//
-//            System.out.println(satellite + " " + orbName+"-"+satelliteOrder);
-//        });
-//
+        List<String> orbitSatellites = new ArrayList<>();
+
+        try (BufferedReader br = Files.newBufferedReader(Paths.get(orbitFileName))){
+
+            orbitSatellites = br.lines().filter(line -> !(line == null || line.length() ==0)).collect(Collectors.toList());
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+
+        orbitSatellites.forEach(orbitSatellite -> {
+            String[] orbSat = orbitSatellite.split(" ");
+            String satellite = orbSat[0];
+
+            String[] orb = orbSat[1].split("-");
+
+            String orbName = orb[0];
+            int satelliteOrder = Integer.parseInt(orb[1]);
+
+            dataInitService.initOrbitSatellite(orbName, satellite, satelliteOrder);
+
+            System.out.println(satellite + " " + orbName+"-"+satelliteOrder);
+        });
+
 //        // Satellite Position data
 //        try {
 //            Files.list(Paths.get(satellitePositionFolder))
