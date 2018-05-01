@@ -8,5 +8,8 @@ import java.util.Map;
 @Data
 public class SatelliteCollection {
 
-    Map<String, List<SatelliteDto>> satellites;
+    String name;
+    String leftSatelliteName;
+    String rightSatelliteName;
+    List<SatelliteDto> satellites;
 }

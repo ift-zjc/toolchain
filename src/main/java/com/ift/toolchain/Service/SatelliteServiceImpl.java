@@ -6,6 +6,8 @@ import com.ift.toolchain.repository.SatelliteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 
 @Service
 public class SatelliteServiceImpl implements SatelliteService {
@@ -31,5 +33,13 @@ public class SatelliteServiceImpl implements SatelliteService {
     @Override
     public Satellite findByName(String satelliteName) {
         return satelliteRepository.findSatelliteByName(satelliteName);
+    }
+
+    @Override
+    public List<Satellite> getSatelliesOnSameOrb(String satelliteName) {
+
+        // Get orb name
+        String orbName = findByName(satelliteName).getOrbit().getName();
+        return satelliteRepository.findAllByOrbitName(orbName);
     }
 }

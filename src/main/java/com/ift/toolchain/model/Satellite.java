@@ -20,7 +20,7 @@ public class Satellite {
 
     private int orderOnOrbit;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "orbit_id")
     private Orbit orbit;
 

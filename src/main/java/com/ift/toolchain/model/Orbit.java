@@ -19,6 +19,6 @@ public class Orbit {
     private String name;
     private int orbitOrder;
 
-    @OneToMany(mappedBy = "orbit")
+    @OneToMany(mappedBy = "orbit", fetch = FetchType.EAGER)
     private List<Satellite> satellites;
 }
