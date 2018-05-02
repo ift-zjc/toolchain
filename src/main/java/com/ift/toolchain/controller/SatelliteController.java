@@ -92,6 +92,7 @@ public class SatelliteController {
                                 satelliteCollection.setRightSatelliteName(satelliteSorted.get(satelliteIndex+1).getName());
                             }
 
+                            satelliteCollection.setOrbName(satellite.getOrbit().getName());
                             satelliteCollection.setName(satelliteName);
                             satelliteCollection.setSatellites(satelliteDtos);
 

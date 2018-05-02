@@ -9,6 +9,7 @@ import java.util.Map;
 public class SatelliteCollection {
 
     String name;
+    String orbName;
     String leftSatelliteName;
     String rightSatelliteName;
     List<SatelliteDto> satellites;

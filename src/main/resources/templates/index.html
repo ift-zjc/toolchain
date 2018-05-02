@@ -13,23 +13,16 @@
     <!--<link rel="stylesheet" href="/Cesium/Sandcastel/CesiumSandcastle.css" />-->
     <title>Tool Chain Visualization</title>
 </head>
-<body>
-<div class="container-fluid mt-3">
+<body style="background-color: black;">
+<div class="container-fluid mt-3" >
+
     <div class="row">
-        <div class="col">
-            <div id="ddSatelliteNumber"></div>
-        </div>
-        <div class="col">
-            <div id="ddTicket"></div>
-        </div>
-        <div class="col">
-            <div id="btnStart"></div>
-        </div>
-    </div>
-    <hr />
-    <div class="row">
-        <div class="col">
+        <div class="col-md-9">
             <div id="cesiumContainer"></div>
+        </div>
+
+        <div class="col-md-3">
+            <div id="gridStatistics" />
         </div>
     </div>
 </div>
@@ -60,6 +53,8 @@
 <!-- <script type="text/javascript" src="https://cdn3.devexpress.com/jslib/17.2.7/js/dx.viz-web.js"></script> -->
 <script src="/js/underscore-min.js"></script>
 <script src="/js/lodash.js"></script>
+<!--<script src="/Workers/UpdateTableWorker.js"></script>-->
+
 <script src="/pages/index.js"></script>
 </body>
 </html>
