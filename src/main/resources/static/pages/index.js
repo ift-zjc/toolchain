@@ -1,7 +1,5 @@
 
 var viewer;
-var ddSatelliteNumber;
-var ddTicket;
 var point;
 var fadedLine;
 var satelliteData;
@@ -10,11 +8,18 @@ var maxDistance = 51591*1000;       //Meter
 var maxAngularVelocity = 0.000087;
 
 var dgStatistics;
+
+var afMonitorStations;
 $(function(){
 
     initComponents();
-
     orbIndex = ['A','B','C','D','E','F'];
+
+    // Init ground stations
+    afMonitorStations = [
+        {gsId: 'gsAF1', cartesian3: [-2438000, -4334500, 3980200]},
+        {gsId: 'gsAF2', cartesian3: [2215500, 5577100, 2153300]}];
+
     // Bing map key
     Cesium.BingMapsApi.defaultKey = 'Ak8mO9f0VpoByuNwmMcVvFka1GCZ3Bh8VrpqNLqGtIgsuUYjTrJdw7kDZwAwlC7E';
     var terrainProvider = new Cesium.CesiumTerrainProvider({
@@ -50,28 +55,67 @@ $(function(){
         url: '/api/satellite/init',
         method: 'GET'
     }).done(function(data){
-        satelliteData = data;
+        satelliteData =  _.sortBy(data, function(satellite) {return satellite.name;});;
         _.map(data, function(satellite){
            addSatellite(satellite.name, satellite.satellites);
         });
+        // Init
+        _.each(satelliteData, function(satellite){
+            satelliteStore.insert({
+                satellite: satellite.name,
+                LOS: 'N/A',
+                AV: 'N/A',
+                distance: 'N/A'
+            })
+        })
     });
 
     // Tick event
     viewer.clock.onTick.addEventListener(handleTick);
 
+    setInterval(function(){ updateSatelliteTable(); }, 800);
+
+
+    // init ground stations
+    _.each(afMonitorStations,function(afMonitor){
+        addGroundStation(afMonitor.gsId, Cesium.Cartesian3.fromArray(afMonitor.cartesian3));
+    });
+
 });
 
+var satelliteStore;
 function initComponents(){
 
-    var books = [
-        { author: 'D. Adams', title: "The Hitchhiker's Guide to the Galaxy", year: 1979, genre: 'Comedy, sci-fi' },
-        { author: 'K. Vonnegut', title: "Cat's Cradle", year: 1963, genre: 'Satire, sci-fi' },
-        { author: 'M. Mitchell', title: "Gone with the Wind", year: 1936, genre: 'Historical fiction' }
-    ];
+    // satelliteDs = [
+    //
+    // ];
+
+    satelliteStore = new DevExpress.data.ArrayStore({
+        // data: satelliteDs,
+        key: ['satellite'],
+        onLoaded: function () {
+            // Event handling commands go here
+
+        },
+        onUpdated: function() {
+            dgStatistics.refresh();
+        },
+        onInserted: function() {
+            dgStatistics.refresh();
+        },
+        onRemoved: function() {
+            dgStatistics.refresh();
+        }
+    })
 
     dgStatistics = $("#gridStatistics").dxDataGrid({
-        dataSource: books
+        dataSource: satelliteStore,
+        showColumnLines: true,
+        showRowLines: true,
+        showBorders: true,
+        columns: ["satellite", "LOS", "AV", "distance"]
     }).dxDataGrid('instance');
+
 }
 
 /**
@@ -86,7 +130,11 @@ function addSatellite(satelliteName, satelliteData){
     var newEntity = new Cesium.Entity({
         id: satelliteName,
         name: satelliteName,
-        point: point
+        billboard:{
+            image: "/Image/satellite-1.png",
+            show: true
+        }
+
     });
 
     // Time and position
@@ -138,8 +186,15 @@ var satelliteOrbConnectionRight;
  */
 function handleTick(clock){
 
+
+
     // If selected on polyline, do nothing
     if(!_.isUndefined(viewer.selectedEntity) && !_.isUndefined(viewer.selectedEntity.polyline)){
+        return;
+    }
+
+    // Ignore ground station selection.
+    if(!_.isUndefined(viewer.selectedEntity) && _.startsWith(viewer.selectedEntity.id, 'gs')){
         return;
     }
 
@@ -162,12 +217,14 @@ function handleTick(clock){
             viewer.entities.remove(satelliteOrbConnectionRight);
             satelliteOrbConnectionRight = undefined;
         }
+
         return;
     }
 
     if(! _.isUndefined(selectedSatellite) && _.isEqual(selectedEntity.id, selectedSatellite.id)){
         // Update connection to adjusted orbs
         orbSatelliteConnect();
+        // updateSatelliteTable();
         return;
     }
 
@@ -234,6 +291,22 @@ function handleTick(clock){
 
     orbSatelliteConnect();
 
+}
+
+/**
+ * Add ground station
+ * @param gsId
+ * @param cartesian3
+ */
+function addGroundStation(gsId, cartesian3){
+    viewer.entities.add({
+        id: gsId,
+        position : cartesian3,
+        billboard:{
+            image: "/Image/groundstation.png",
+            show: true
+        }
+    });
 }
 
 function orbSatelliteConnect(){
@@ -315,6 +388,42 @@ function orbSatelliteConnect(){
         }else{
             satelliteOrbConnectionRight.polyline.positions = positionRight;
         }
+    }
+
+}
+
+
+function updateSatelliteTable(){
+
+    if(_.isUndefined(selectedSatellite)){
+
+        _.map(satelliteData, function (satellite) {
+            satelliteStore.update({satellite: satellite.name}, {
+                satellite: satellite.name,
+                LOS: 'N/A',
+                AV: 'N/A',
+                distance: 'N/A'
+            })
+        });
+    }else{
+        _.map(satelliteData, function (satellite) {
+            var distance = Cesium.Cartesian3.distance(selectedSatellite.position.getValue(viewer.clock.currentTime), viewer.entities.getById(satellite.name).position.getValue(viewer.clock.currentTime));
+            var los = distance <= maxDistance;
+
+            // Check for angular velocity
+            var postSecond = Cesium.JulianDate.clone(viewer.clock.currentTime);
+            postSecond = Cesium.JulianDate.addSeconds(postSecond, 1, postSecond);
+            var angularVelocity = Cesium.Cartesian3.angleBetween(selectedSatellite.position.getValue(viewer.clock.currentTime), viewer.entities.getById(satellite.name).position.getValue(viewer.clock.currentTime)) -
+                Cesium.Cartesian3.angleBetween(selectedSatellite.position.getValue(postSecond), viewer.entities.getById(satellite.name).position.getValue(postSecond));
+
+            satelliteStore.update({satellite: satellite.name}, {
+                satellite: satellite.name,
+                LOS: los,
+                AV: Math.abs(angularVelocity),
+                distance: distance/1000
+            })
+
+        });
     }
 
 }
