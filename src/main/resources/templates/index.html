@@ -11,6 +11,7 @@
         @import url(/Cesium/Widgets/widgets.css);
     </style>
     <!--<link rel="stylesheet" href="/Cesium/Sandcastel/CesiumSandcastle.css" />-->
+    <link rel="stylesheet" href="/css/main.css" />
     <title>Tool Chain Visualization</title>
 </head>
 <body style="background-color: black;">
@@ -18,11 +19,36 @@
 
     <div class="row">
         <div class="col-md-9">
-            <div id="cesiumContainer"></div>
+            <div class="row">
+                <div class="col-md-12">
+                    <div id="cesiumContainer"></div>
+                </div>
+
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-3">
+                    <div id="trackingSwitch"></div>
+                </div>
+                <div class="col-md-5 offset-md-4">
+                    <table class="table armyGreen">
+                        <tbody>
+                        <tr>
+                            <td>Intra - Satellite Crosslinks</td>
+                            <td align="center"><img src="/Image/satellite-24.png" /><span id="leftSatellite">[N/A]</span> --------<img src="/Image/satellite-24.png" /><span class="selectedSatellite" style="color: whitesmoke !important;">[N/A]</span> --------<img src="/Image/satellite-24.png" /><span id="rightSatellite">[N/A]</span> </td>
+                        </tr>
+                        <tr>
+                            <td>Inter - Satellite Crosslinks</td>
+                            <td align="center"><img src="/Image/satellite-24.png" /><span id="leftOrbSatellite">[N/A]</span> --------<img src="/Image/satellite-24.png" /><span class="selectedSatellite" style="color: whitesmoke !important;">[N/A]</span> --------<img src="/Image/satellite-24.png" /><span id="rightOrbSatellite">[N/A]</span> </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
 
         <div class="col-md-3">
-            <div id="gridStatistics" />
+            <div id="gridStatistics"></div>
         </div>
     </div>
 </div>
