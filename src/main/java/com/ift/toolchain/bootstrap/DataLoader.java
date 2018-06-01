@@ -26,9 +26,8 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
 
         // Read Orbit info
 
-        String orbitFileName = "/root/data/GPS_TLE_31.txt";
-//        String satellitePositionFolder = "/home/ift/Projects/toolchain/Crosslink Scenario Data/Orbit Information";
-//        String satellitePositionFolder = "/Users/lastcow/Projects/toolchain/Crosslink Scenario Data/Orbit Information";
+        String orbitFileName = "C:\\Users\\zhijiang\\Documents\\Projects\\toolchain\\Crosslink Scenario Data\\GPS_TLE_31.txt";
+
         List<String> orbitSatellites = new ArrayList<>();
 
         try (BufferedReader br = Files.newBufferedReader(Paths.get(orbitFileName))){
@@ -51,26 +50,5 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
 
             System.out.println(satellite + " " + orbName+"-"+satelliteOrder);
         });
-
-//        // Satellite Position data
-//        try {
-//            Files.list(Paths.get(satellitePositionFolder))
-//                    .filter(Files::isRegularFile)
-//                    .forEach(fileName -> {
-//                        try (BufferedReader br = Files.newBufferedReader(fileName)) {
-////
-//                            List<String> orbitSatellites = br.lines().skip(7).limit(1440)
-//                            .filter(
-//                                    line -> !(line == null ||line.trim().length() == 0))
-//                                    .collect(Collectors.toList());
-//                            System.out.println("");
-//                        } catch (IOException e) {
-//                            e.printStackTrace();
-//                        }
-//                    });
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//
     }
 }
