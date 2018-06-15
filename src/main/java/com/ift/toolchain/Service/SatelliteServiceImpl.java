@@ -42,4 +42,11 @@ public class SatelliteServiceImpl implements SatelliteService {
         String orbName = findByName(satelliteName).getOrbit().getName();
         return satelliteRepository.findAllByOrbitName(orbName);
     }
+
+    @Override
+    public Satellite updateSatellite(String satelliteName, String satelliteId) {
+        Satellite satellite = findByName(satelliteName);
+        satellite.setSatelliteId(satelliteId);
+        return save(satellite);
+    }
 }
