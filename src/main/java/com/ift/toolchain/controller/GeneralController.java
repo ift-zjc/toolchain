@@ -25,15 +25,20 @@ public class GeneralController {
 
     @GetMapping(value = "/")
     public String index(){
-        Map<String, String> data = new HashMap<String, String>();
-        data.put("name", "zhijiang chen");
-        try {
-            pdfGeneratorUtil.createPdf("email", data);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+//        Map<String, String> data = new HashMap<String, String>();
+//        data.put("name", "zhijiang chen");
+//        try {
+//            pdfGeneratorUtil.createPdf("email", data);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
 
         return "index";
+    }
+
+    @GetMapping(value = "/simulate")
+    public String simulate(){
+        return "simulate";
     }
 
 

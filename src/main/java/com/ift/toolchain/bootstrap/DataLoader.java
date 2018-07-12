@@ -77,6 +77,7 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
                paramsArray.forEach(param -> params.put(((JSONObject)param).get("paraName").toString(),
                        ((JSONObject)param).get("value").toString()));
 
+
                // Update satellite
                 dataInitService.updateSatellite(satelliteName, satelliteId, params);
             });
