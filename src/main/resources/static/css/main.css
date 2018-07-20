@@ -1,0 +1,19 @@
+
+.dx-datagrid {
+    background-color:black !important;
+}
+
+.armyGreen {
+    background-color: #32561A !important;
+    color: #57962B !important;
+}
+
+.armyRed {
+    background-color: #813C44 !important;
+    color: white !important;
+}
+
+.armySelectedRow {
+    background-color: #067372 !important;
+    color: #0EE7F6 !important;
+}

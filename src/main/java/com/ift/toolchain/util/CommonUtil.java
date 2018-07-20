@@ -1,7 +1,13 @@
 package com.ift.toolchain.util;
 
+import com.ift.toolchain.dto.SatelliteCollection;
+import com.ift.toolchain.model.Satellite;
+
+import java.util.List;
+
 public class CommonUtil {
 
+    public static List<SatelliteCollection> satellites;
     public static final double a = 6378137;
     public static final double f = 0.0034;
     public static final double b = 6.3568e6;

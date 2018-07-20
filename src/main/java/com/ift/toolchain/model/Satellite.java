@@ -17,6 +17,7 @@ public class Satellite {
 
     @Column(unique = true)
     private String name;
+    private String satelliteId;
 
     private int orderOnOrbit;
 
@@ -29,4 +30,7 @@ public class Satellite {
 
     @OneToMany(mappedBy = "satelliteb")
     private List<SatelliteXSatellite> satelliteXSatellitesB;
+
+    @OneToMany(mappedBy = "satellite")
+    private List<Parameter> satelliteParams;
 }
