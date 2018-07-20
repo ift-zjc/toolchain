@@ -32,8 +32,8 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
 
         // Read Orbit info
 
-        String orbitFileName = "C:\\Users\\zhijiang\\Documents\\Projects\\toolchain\\Crosslink Scenario Data\\GPS_TLE_31.txt";
-
+//         String orbitFileName = "C:\\Users\\zhijiang\\Documents\\Projects\\toolchain\\Crosslink Scenario Data\\GPS_TLE_31.txt";
+        String orbitFileName = "/root/toolchain/Crosslink Scenario Data/GPS_TLE_31.txt";
         List<String> orbitSatellites = new ArrayList<>();
 
         try (BufferedReader br = Files.newBufferedReader(Paths.get(orbitFileName))){
