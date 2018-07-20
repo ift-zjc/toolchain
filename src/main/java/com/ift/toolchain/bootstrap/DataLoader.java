@@ -61,7 +61,8 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
         // Read configuration file from OMNet? Jsat track?
         JSONParser parser = new JSONParser();
         try{
-            Object obj = parser.parse(new FileReader("C:\\Users\\zhijiang\\Documents\\Projects\\toolchain\\Crosslink Scenario Data\\gpsCLscnwAppdefv4.json"));
+//            Object obj = parser.parse(new FileReader("C:\\Users\\zhijiang\\Documents\\Projects\\toolchain\\Crosslink Scenario Data\\gpsCLscnwAppdefv4.json"));
+            Object obj = parser.parse(new FileReader("/root/toolchain/Crosslink Scenario Data/gpsCLscnwAppdefv4.json"));
             JSONObject jsonObject = (JSONObject)obj;
 
             // Get satellite id.
