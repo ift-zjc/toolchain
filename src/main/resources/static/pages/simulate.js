@@ -2,6 +2,9 @@
 var viewer;
 var startTime;
 
+var maxDistance = 51591*1000;       //Meter
+var maxAngularVelocity = 0.000087;
+
 $(function(){
 
     // Bing map key
@@ -72,8 +75,29 @@ function calculateStep(){
                    // Calculate distance
                    var distance = Cesium.Cartesian3.distance(item.position.getValue(viewer.clock.currentTime),
                        itemDeep.position.getValue(viewer.clock.currentTime));
+
+                   // Check for angular velocity
+                   var postSecond = Cesium.JulianDate.clone(viewer.clock.currentTime);
+                   postSecond = Cesium.JulianDate.addSeconds(postSecond, 1, postSecond);
+
                    var angularVelocity = Cesium.Cartesian3.angleBetween(item.position.getValue(viewer.clock.currentTime),
-                       itemDeep.position.getValue(viewer.clock.currentTime));
+                       itemDeep.position.getValue(viewer.clock.currentTime)) -
+                       Cesium.Cartesian3.angleBetween(item.position.getValue(postSecond),
+                           itemDeep.position.getValue(postSecond));
+
+                   if(distance <= maxDistance && Math.abs(angularVelocity)<=maxAngularVelocity){
+                       var data = {'sourceid': item.id, 'destid': itemDeep.id, 'distance': distance, 'angularvelocity': Math.abs(angularVelocity)};
+                       // Ajax call send to back
+                       $.ajax({
+                           type: "POST",
+                           url: "/api/event/trigger",
+                           data: JSON.stringify(data),
+                           contentType: "application/json",
+                           success: function(data){
+                               console.log(data);
+                           }
+                       })
+                   }
                    console.log("Distance between: " + item.id + " | " + itemDeep.id + " : " + distance +
                    "\n\rAngular velocity: " + angularVelocity);
 

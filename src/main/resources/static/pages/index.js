@@ -1,4 +1,5 @@
 
+var terrainProvider;
 var viewer;
 var point;
 var fadedLine;
@@ -11,6 +12,18 @@ var maxGroundSatelliteDistance = 21100*1000;    // Meter
 var dgStatistics;
 
 var afMonitorStations;
+
+
+var simulatorStart;
+var simulatorEnd;
+var simulatorDelta;
+var simulator;
+
+
+var satellitesArray = ["BIIF-1", "BIIF-2", "BIIF-3", "BIIF-4", "BIIF-5", "BIIF-6", "BIIF-7", "BIIF-8", "BIIF-9", "BIIF-10", "BIIF-11", "BIIF-12",
+    "BIIR-1", "BIIR-2", "BIIR-3", "BIIR-4", "BIIR-5", "BIIR-6", "BIIR-7", "BIIR-8", "BIIR-9", "BIIR-10", "BIIR-11", "BIIR-12", "BIIR-13",
+    "BIIRM-1", "BIIRM-2", "BIIRM-3", "BIIRM-4", "BIIRM-5", "BIIRM-6", "BIIRM-7", "BIIRM-8"];
+
 $(function(){
 
     initComponents();
@@ -29,7 +42,7 @@ $(function(){
 
     // Bing map key
     Cesium.BingMapsApi.defaultKey = 'Ak8mO9f0VpoByuNwmMcVvFka1GCZ3Bh8VrpqNLqGtIgsuUYjTrJdw7kDZwAwlC7E';
-    var terrainProvider = new Cesium.CesiumTerrainProvider({
+    terrainProvider = new Cesium.CesiumTerrainProvider({
         url : 'https://assets.agi.com/stk-terrain/world',
         requestVertexNormals : true
     });
@@ -64,7 +77,7 @@ $(function(){
     }).done(function(data){
         satelliteData =  _.sortBy(data, function(satellite) {return satellite.name;});;
         _.map(data, function(satellite){
-           addSatellite(satellite.name, satellite.satellites);
+           addSatellite(viewer, satellite.name, satellite.satellites);
         });
         // Init
         _.each(satelliteData, function(satellite){
@@ -91,7 +104,271 @@ $(function(){
     });
 
     // setResetInterval(true);
+
+
+    /**
+     * Start Simulation
+     */
+
+    // Check for browser support
+    if (typeof(Worker) !== "undefined") {
+        simulatorStart = $("#dtSimulateStart").dxDateBox({
+            type: "datetime",
+            min: viewer.clock.startTime,
+            max: viewer.clock.stopTime,
+            dateSerializationFormat: "yyyy-MM-ddTHH:mm:ssZ"
+        }).dxDateBox("instance");
+
+        simulatorEnd = $("#dtSimulateEnd").dxDateBox({
+            type: "datetime",
+            min: viewer.clock.startTime,
+            max: viewer.clock.stopTime,
+            dateSerializationFormat: "yyyy-MM-ddTHH:mm:ssZ"
+        }).dxDateBox("instance");
+
+        simulatorDelta = $("#deltaSimulate").dxNumberBox({
+            placeholder: 'Enter time delta',
+            min: 1,
+            max: 720
+        }).dxNumberBox("instance");
+
+        $('#popupSimulating').dxPopup({
+
+            showTitle: false,
+            width: 600,
+            height: 'auto',
+            closeOnOutsideClick: true,
+            contentTemplate: function(e){
+                e.append('<p>Simulating in progress ... ...</p>');
+            }
+        });
+
+        $("#dtBtnGenerate").dxButton({
+            text: "Start simulator",
+            onClick: function () {
+                console.log("Simulator start ....");
+                // simulator = new Worker("/js/simulator.js");
+
+                // setTimeout(simulator, 100, Cesium.JulianDate.fromDate(new Date(simulatorStart.option("value"))),
+                //     Cesium.JulianDate.fromDate(new Date(simulatorEnd.option("value"))),
+                //     simulatorDelta.option("value"));
+                // simulator.onmessage = function (event){
+                //     console.log(event.data);
+                // }
+
+                // var simulatorWindow = window.open("/simulate", '_blank');
+
+                $("#popupSimulating").dxPopup("instance").show();
+
+                /**
+                 * Calling backend
+                 */
+                var offsetStart = Math.abs(Cesium.JulianDate.secondsDifference(Cesium.JulianDate.fromDate(new Date(simulatorStart.option("value"))),viewer.clock.startTime));
+                var offsetEnd = Math.abs(Cesium.JulianDate.secondsDifference(Cesium.JulianDate.fromDate(new Date(simulatorEnd.option("value"))),viewer.clock.startTime));
+                var delta = simulatorDelta.option("value");
+                var data = {'offsetStart': offsetStart, 'offsetEnd': offsetEnd, 'delta': delta};
+                $.ajax({
+                    url: '/simulate',
+                    type: 'POST',
+                    data: JSON.stringify(data),
+                    contentType: "application/json",
+                    success: function(data){
+
+                        $("#popupSimulating").dxPopup("instance").hide();
+                        // Load to data grid.
+                        var dgSimulationResult = $('#dgSimulateResult').dxDataGrid({
+                            dataSource: data,
+                            searchPanel: {
+                                visible: true
+                            },
+                            filterRow: {
+                                visible: true
+                            },
+                            columns: [
+                                {
+                                    dataField: "satelliteNameSource",
+                                    caption: "Satellite Source"
+                                },{
+                                    dataField: "satelliteNameDest",
+                                    caption: "Satellite Destination"
+                                },{
+                                    dataField: "offsetMillionSecond",
+                                    caption: "Offset from start (ms)"
+                                }, "connected", "delay", "angelVelocity"],
+                            onRowPrepared: function (info){
+                                if(info.rowType == "data"){
+                                    info.rowElement.removeClass("dx-row-alt").addClass("bg-dark text-white");
+                                }
+                            }
+                        });
+
+                        // Load to chart
+                        var chartSimulateResult = $('#chartSimulateResult').dxChart({
+                            palette: "violet",
+                            dataSource: DevExpress.data.query(data)
+                                .filter("satelliteNameSource", "=", "BIIF-1")
+                                .filter("satelliteNameDest", "=", "BIIF-2").toArray(),
+                            commonSeriesSettings: {
+                                type: "spline",
+                                argumentField: "offsetMillionSecond"
+                            },
+                            series: [
+                                {valueField: "delay", name: "Delay", color: "#E03A16"}
+                            ],
+                            size: {
+                                height: 750
+                            },
+                            tooltip: {
+                                enabled: true
+                            },
+                            title: {
+                                text: "END-TO-END DELAY OF CROSSLINKS",
+                                subtitle: {
+                                    text: "BIIF-1 vs BIIF-2",
+                                    font: {
+                                        color: "#57962B",
+                                        size: 20,
+                                        weight: 800
+                                    }
+                                },
+                                font:{
+                                    color: "white"
+                                }
+                            }
+
+
+                        }).dxChart("instance");
+
+                        var selectFrom = $("#selectFrom").dxSelectBox({
+                            dataSource: satellitesArray,
+                            value: satellitesArray[0]
+                        }).dxSelectBox("instance");
+
+                        var selectTo = $("#selectTo").dxSelectBox({
+                            dataSource: satellitesArray,
+                            value: satellitesArray[1]
+                        }).dxSelectBox("instance");
+
+                        $("#btnRefresh").dxButton({
+                            text: "Refresh Chart",
+                            onClick: function (e) {
+                                var refreshedDs = DevExpress.data.query(data)
+                                        .filter(function (dataItem){
+                                            return (dataItem.satelliteNameSource == selectFrom.option("value")) ||
+                                                (dataItem.satelliteNameSource == selectTo.option("value"));
+                                        })
+                                        .filter(function (dataItem) {
+                                            return (dataItem.satelliteNameDest == selectFrom.option("value")) ||
+                                            (dataItem.satelliteNameDest == selectTo.option("value"));
+                                        }).toArray();
+
+                                chartSimulateResult.option("dataSource", refreshedDs);
+                                chartSimulateResult.option("title.subtitle.text", selectFrom.option("value") + " vs " + selectTo.option("value"));
+                            }
+                        });
+                    }
+
+                })
+            }
+        })
+    }else{
+        // Not support
+        alert("Your web browser doesn't support simulator");
+    }
 });
+
+
+function simulator(start, end, count){
+    var _viewer = new Cesium.Viewer('_cesiumContainer', {
+        terrainProvider : terrainProvider,
+        baseLayerPicker : false,
+        shadows: true
+    });
+
+    _viewer.clock.clockRange = Cesium.ClockRange.LOOP_STOP; //Loop at the end
+    _viewer.clock.multiplier = 60;
+
+    /**
+     * Init all satellites.
+     */
+    $.ajax({
+        url: '/api/satellite/init',
+        method: 'GET'
+    }).done(function(data){
+        satelliteData =  _.sortBy(data, function(satellite) {return satellite.name;});;
+        _.map(data, function(satellite){
+            addSatellite(_viewer, satellite.name, satellite.satellites);
+        });
+        calculateStep(_viewer, start, end, count);
+    });
+}
+
+/**
+ * Simulate
+ * @param viewer
+ * @param startTime
+ * @param endTime
+ * @param count
+ */
+function calculateStep(viewer, startTime, endTime, count){
+
+    var orbSatellites = viewer.entities.values;
+
+    // Do calculate then add step.
+    // console.log(viewer.clock.currentTime);
+    orbSatellites.forEach(function calculateBetweenTwoObject(item, index){
+        console.log("For Satellite: " + item.id);
+        // Loop entities again
+        orbSatellites.forEach(function calculateBetweenTwoObjectDeep(itemDeep, indexDeep){
+            // Avoid duplicated calculate
+            if(index >= indexDeep){
+                // Skip
+                return;
+            }
+
+            try {
+                // Reset time.
+                viewer.clock.currentTime = Cesium.JulianDate.clone(startTime, viewer.clock.startTime);
+                while(true) {
+                    // Calculate distance
+                    var distance = Cesium.Cartesian3.distance(item.position.getValue(viewer.clock.currentTime),
+                        itemDeep.position.getValue(viewer.clock.currentTime));
+
+                    // Check for angular velocity
+                    var postSecond = Cesium.JulianDate.clone(viewer.clock.currentTime);
+                    postSecond = Cesium.JulianDate.addSeconds(postSecond, 1, postSecond);
+
+                    var angularVelocity = Cesium.Cartesian3.angleBetween(item.position.getValue(viewer.clock.currentTime),
+                        itemDeep.position.getValue(viewer.clock.currentTime)) -
+                        Cesium.Cartesian3.angleBetween(item.position.getValue(postSecond),
+                            itemDeep.position.getValue(postSecond));
+
+                    if(distance <= maxDistance && Math.abs(angularVelocity)<=maxAngularVelocity){
+                        var data = {'sourceid': item.id, 'destid': itemDeep.id, 'distance': distance, 'angularvelocity': Math.abs(angularVelocity)};
+                        // Ajax call send to back
+                        $.ajax({
+                            type: "POST",
+                            url: "/api/event/trigger",
+                            data: JSON.stringify(data),
+                            contentType: "application/json",
+                            success: function(data){
+                                console.log(data);
+                            }
+                        })
+                    }
+                    console.log("Distance between: " + item.id + " | " + itemDeep.id + " : " + distance +
+                        "\n\rAngular velocity: " + angularVelocity);
+
+                    viewer.clock.currentTime = Cesium.JulianDate.addSeconds(viewer.clock.currentTime,
+                        count,
+                        viewer.clock.currentTime);
+                }
+            }catch(ex){
+                console.error(ex.message);
+            }
+        })
+    });
+}
 
 var timer1;
 var timer2;
@@ -329,7 +606,7 @@ function initComponents(){
  * @param satelliteName
  * @param satelliteData
  */
-function addSatellite(satelliteName, satelliteData){
+function addSatellite(viewer, satelliteName, satelliteData){
     var entityTime = Cesium.JulianDate.clone(viewer.clock.startTime, entityTime);
 
     // Create new entity

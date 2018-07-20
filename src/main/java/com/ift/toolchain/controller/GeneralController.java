@@ -36,11 +36,6 @@ public class GeneralController {
         return "index";
     }
 
-    @GetMapping(value = "/simulate")
-    public String simulate(){
-        return "simulate";
-    }
-
 
     @GetMapping(value = "/file")
     public @ResponseBody void getFile(HttpServletResponse response) throws IOException{

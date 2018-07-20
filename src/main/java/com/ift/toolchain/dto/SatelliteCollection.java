@@ -13,4 +13,6 @@ public class SatelliteCollection {
     String leftSatelliteName;
     String rightSatelliteName;
     List<SatelliteDto> satellites;
+
+    int sort;
 }
