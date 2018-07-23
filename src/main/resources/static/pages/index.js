@@ -52,7 +52,7 @@ $(function(){
         shadows: true
     });
 
-    viewer.clock.startTime = Cesium.JulianDate.fromDate(new Date());
+    // viewer.clock.startTime = Cesium.JulianDate.fromDate(new Date());
     viewer.clock.clockRange = Cesium.ClockRange.LOOP_STOP; //Loop at the end
     viewer.clock.multiplier = 60;
 
