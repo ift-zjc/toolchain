@@ -52,6 +52,7 @@ $(function(){
         shadows: true
     });
 
+    viewer.clock.startTime = Cesium.JulianDate.fromDate(new Date());
     viewer.clock.clockRange = Cesium.ClockRange.LOOP_STOP; //Loop at the end
     viewer.clock.multiplier = 60;
 
@@ -167,6 +168,7 @@ $(function(){
                 var offsetEnd = Math.abs(Cesium.JulianDate.secondsDifference(Cesium.JulianDate.fromDate(new Date(simulatorEnd.option("value"))),viewer.clock.startTime));
                 var delta = simulatorDelta.option("value");
                 var data = {'offsetStart': offsetStart, 'offsetEnd': offsetEnd, 'delta': delta};
+                var simulatorStartDateTime = viewer.clock.startTime;
                 $.ajax({
                     url: '/simulate',
                     type: 'POST',
@@ -193,7 +195,12 @@ $(function(){
                                     caption: "Satellite Destination"
                                 },{
                                     dataField: "offsetMillionSecond",
-                                    caption: "Offset from start (ms)"
+                                    caption: "Simulation point (local time)",
+                                    cellTemplate: function (container, options){
+                                        var currentTime = Cesium.JulianDate.clone(viewer.clock.startTime);
+                                        currentTime = Cesium.JulianDate.addSeconds(simulatorStartDateTime, options.value/1000, currentTime);
+                                       $('<span>'+ moment(Cesium.JulianDate.toDate(currentTime).toISOString()).format('MMMM Do YYYY, h:mm:ss a') +'</span>').appendTo(container);
+                                    }
                                 }, "connected", "delay", "angelVelocity"],
                             onRowPrepared: function (info){
                                 if(info.rowType == "data"){
@@ -211,6 +218,19 @@ $(function(){
                             commonSeriesSettings: {
                                 type: "spline",
                                 argumentField: "offsetMillionSecond"
+                            },
+                            argumentAxis: {
+                                argumentType: 'number',
+                                label: {
+                                    customizeText: function(obj) {
+                                        var currentTime = Cesium.JulianDate.clone(viewer.clock.startTime);
+                                        currentTime = Cesium.JulianDate.addSeconds(simulatorStartDateTime, obj.value / 1000, currentTime);
+                                        return moment(Cesium.JulianDate.toDate(currentTime).toISOString()).format('MMMM Do YYYY, h:mm:ss a');
+                                    },
+                                    font:{
+                                        color: '#57962B'
+                                    }
+                                }
                             },
                             series: [
                                 {valueField: "delay", name: "Delay", color: "#E03A16"}
