@@ -144,7 +144,7 @@ $(function(){
             }
         });
 
-        $("#dtBtnGenerate").dxButton({
+        var btnGenerate = $("#dtBtnGenerate").dxButton({
             text: "Start simulator",
             onClick: function () {
                 console.log("Simulator start ....");
@@ -181,18 +181,27 @@ $(function(){
                         var dgSimulationResult = $('#dgSimulateResult').dxDataGrid({
                             dataSource: data,
                             searchPanel: {
-                                visible: true
+                                visible: false
                             },
                             filterRow: {
                                 visible: true
                             },
+                            paging:{
+                                pageSize: 10
+                            },
                             columns: [
                                 {
                                     dataField: "satelliteNameSource",
-                                    caption: "Satellite Source"
+                                    caption: "Satellite Source",
+                                    lookup: {
+                                        dataSource: satellitesArray
+                                    }
                                 },{
                                     dataField: "satelliteNameDest",
-                                    caption: "Satellite Destination"
+                                    caption: "Satellite Destination",
+                                    lookup: {
+                                        dataSource: satellitesArray
+                                    }
                                 },{
                                     dataField: "offsetMillionSecond",
                                     caption: "Simulation point (local time)",

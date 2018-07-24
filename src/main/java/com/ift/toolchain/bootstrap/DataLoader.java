@@ -33,7 +33,7 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
         // Read Orbit info
 
 //         String orbitFileName = "C:\\Users\\zhijiang\\Documents\\Projects\\toolchain\\Crosslink Scenario Data\\GPS_TLE_31.txt";
-        String orbitFileName = "/root/toolchain/Crosslink Scenario Data/GPS_TLE_31.txt";
+        String orbitFileName = "/home/cloud_ift/toolchain/Crosslink Scenario Data/GPS_TLE_31.txt";
         List<String> orbitSatellites = new ArrayList<>();
 
         try (BufferedReader br = Files.newBufferedReader(Paths.get(orbitFileName))){
@@ -62,7 +62,7 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
         JSONParser parser = new JSONParser();
         try{
 //            Object obj = parser.parse(new FileReader("C:\\Users\\zhijiang\\Documents\\Projects\\toolchain\\Crosslink Scenario Data\\gpsCLscnwAppdefv4.json"));
-            Object obj = parser.parse(new FileReader("/root/toolchain/Crosslink Scenario Data/gpsCLscnwAppdefv4.json"));
+            Object obj = parser.parse(new FileReader("/home/cloud_ift/toolchain/Crosslink Scenario Data/gpsCLscnwAppdefv4.json"));
             JSONObject jsonObject = (JSONObject)obj;
 
             // Get satellite id.

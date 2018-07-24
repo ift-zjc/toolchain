@@ -2,6 +2,7 @@ package com.ift.toolchain.controller;
 
 
 import com.ift.toolchain.Service.MessageHubService;
+import com.ift.toolchain.Service.StorageService;
 import com.ift.toolchain.dto.SatelliteCollection;
 import com.ift.toolchain.dto.SatelliteDto;
 import com.ift.toolchain.dto.SatellitePosition;
@@ -30,10 +31,12 @@ public class SimulateController {
 
     @Autowired
     MessageHubService messageHubService;
+    @Autowired
+    StorageService storageService;
 
     @PostMapping(value = "/simulate", consumes = "application/json")
     public List<SimulateResultDto> simulate(@RequestBody Map<String, Object> payload){
-
+        List<String> dataStr = new ArrayList<>();
         int startOffset = (int) Float.parseFloat(payload.get("offsetStart").toString());
         int endOffset = (int) Float.parseFloat(payload.get("offsetEnd").toString());
         int delta = (int) Float.parseFloat(payload.get("delta").toString()) * 60;   // Minute
@@ -47,85 +50,98 @@ public class SimulateController {
             // Loop satellites
             CommonUtil.satellites.stream().forEach(satelliteCollection -> {
 
-                List<String> pairedSatellites = new ArrayList<>();
-                // Get current satellite position
-                SatellitePosition currentSelectedSatellitePosition = getSatellitePosition(currentTimeInSecond, satelliteCollection);
-                // Get last 1 second satellite position
-                SatellitePosition currentSelectedSatellitePosition1SecondBefore = getSatellitePosition(currentTimeInSecond - 1, satelliteCollection);
-                // pair satellite
-                SatelliteCollection pairSatellite = null;
+                try {
+                    List<String> pairedSatellites = new ArrayList<>();
+                    // Get current satellite position
+                    SatellitePosition currentSelectedSatellitePosition = getSatellitePosition(currentTimeInSecond, satelliteCollection);
+                    // Get last 1 second satellite position
+                    SatellitePosition currentSelectedSatellitePosition1SecondBefore = getSatellitePosition(currentTimeInSecond - 1, satelliteCollection);
+                    // pair satellite
+                    SatelliteCollection pairSatellite = null;
 
-                // Find pair satellite
-                do {
-                    pairSatellite = CommonUtil.satellites.stream()
-                            .filter(satelliteCollection1 ->
-                                    // Not selected satellite
-                                    !satelliteCollection1.getName().equalsIgnoreCase(satelliteCollection.getName())
-                                            // Not been selected before
-                                            && !pairedSatellites.contains(satelliteCollection1.getName())
-                                            // After selected satellite (avoid duplicated calculation)
-                                            && satelliteCollection1.getSort() > satelliteCollection.getSort())
-                            .findAny().orElse(null);
+                    // Find pair satellite
+                    do {
+                        pairSatellite = CommonUtil.satellites.stream()
+                                .filter(satelliteCollection1 ->
+                                        // Not selected satellite
+                                        !satelliteCollection1.getName().equalsIgnoreCase(satelliteCollection.getName())
+                                                // Not been selected before
+                                                && !pairedSatellites.contains(satelliteCollection1.getName())
+                                                // After selected satellite (avoid duplicated calculation)
+                                                && satelliteCollection1.getSort() > satelliteCollection.getSort())
+                                .findAny().orElse(null);
 
-                    if (pairSatellite == null) continue; // Quit loop
+                        if (pairSatellite == null) continue; // Quit loop
 
-                    // Add paired satellite name to list
-                    pairedSatellites.add(pairSatellite.getName());
+                        // Add paired satellite name to list
+                        pairedSatellites.add(pairSatellite.getName());
 
-                    // Get paired satellite's position
-                    SatellitePosition currentPairedSatellitePosition = getSatellitePosition(currentTimeInSecond, pairSatellite);
-                    // Get last 1 second paired satellite's position
-                    SatellitePosition currentPairedSatellitePosition1SecondBefore = getSatellitePosition(currentTimeInSecond - 1, pairSatellite);
+                        // Get paired satellite's position
+                        SatellitePosition currentPairedSatellitePosition = getSatellitePosition(currentTimeInSecond, pairSatellite);
+                        // Get last 1 second paired satellite's position
+                        SatellitePosition currentPairedSatellitePosition1SecondBefore = getSatellitePosition(currentTimeInSecond - 1, pairSatellite);
 
-                    // Calculate distance between pair
-                    double distance = getDistanceBetweenPair(currentPairedSatellitePosition, currentSelectedSatellitePosition);
+                        // Calculate distance between pair
+                        double distance = getDistanceBetweenPair(currentPairedSatellitePosition, currentSelectedSatellitePosition);
 
-                    // Calculate the angel velocity
-                    double angleVelocity = getAngleVelocity(currentSelectedSatellitePosition, currentSelectedSatellitePosition1SecondBefore,
-                            currentPairedSatellitePosition, currentPairedSatellitePosition1SecondBefore);
+                        // Calculate the angel velocity
+                        double angleVelocity = getAngleVelocity(currentSelectedSatellitePosition, currentSelectedSatellitePosition1SecondBefore,
+                                currentPairedSatellitePosition, currentPairedSatellitePosition1SecondBefore);
 
-                    boolean connected = distance < maxDistance && angleVelocity < maxAngularVelocity;
+                        boolean connected = distance < maxDistance && angleVelocity < maxAngularVelocity;
 
-                    double delay = connected ? distance / lightSpeed : -1;
+                        double delay = connected ? distance / lightSpeed : -1;
 
-                    // Write to database.
+                        // Write to database.
 
 //                    System.out.println(satelliteCollection.getName() + " - " + pairSatellite.getName() + " : " + distance + " / " + angleVelocity + " : " + connected);
 
-                    // Only updated the connectivity now
-                    /**
-                     * MsgType: category of the message for link, for application, or for node, etc.
-                     * MsgType = 1,   link parameter update
-                     * MsgType= 2,   application behavior update
-                     * MsgTyp2= 3,   satellite node parameter update
-                     * SubMsgType: sub message category under each MsgType
-                     * MsgType=1
-                     * 	SubMsgType=1, link delay update
-                     * 	SubMsgType=2, link through update
-                     * 	SubMsgtype=3, link connectivity update
-                     * MsgType=2
-                     * 	SubMsgType=1, application data transmission message
-                     *
-                     * MsgSentTime:  millisecond after simulation start the message is generated
-                     * MsgEffTime: millisecond after simulation start the message should be effective
-                     */
-                    simulateResultDtos.add(new SimulateResultDto(satelliteCollection.getName(),
-                            pairSatellite.getName(),
-                            connected,
-                            currentTimeInSecond*1000,
-                            1,
-                            3,
-                            delay == -1 ? 0f : (float) delay,
-                            angleVelocity,
-                            satelliteCollection.getName() + "-" + pairSatellite.getName()));
+                        // Only updated the connectivity now
+                        /**
+                         * MsgType: category of the message for link, for application, or for node, etc.
+                         * MsgType = 1,   link parameter update
+                         * MsgType= 2,   application behavior update
+                         * MsgTyp2= 3,   satellite node parameter update
+                         * SubMsgType: sub message category under each MsgType
+                         * MsgType=1
+                         * 	SubMsgType=1, link delay update
+                         * 	SubMsgType=2, link through update
+                         * 	SubMsgtype=3, link connectivity update
+                         * MsgType=2
+                         * 	SubMsgType=1, application data transmission message
+                         *
+                         * MsgSentTime:  millisecond after simulation start the message is generated
+                         * MsgEffTime: millisecond after simulation start the message should be effective
+                         */
+                        simulateResultDtos.add(new SimulateResultDto(satelliteCollection.getName(),
+                                pairSatellite.getName(),
+                                connected,
+                                currentTimeInSecond * 1000,
+                                1,
+                                3,
+                                delay == -1 ? 0f : (float) delay,
+                                angleVelocity,
+                                satelliteCollection.getName() + "-" + pairSatellite.getName()));
 //                    messageHubService.create(satelliteCollection.getName(), pairSatellite.getName(), currentTimeInSecond*1000, 1, 3, connected ? 1f: 0f, (float) delay);
 
-                } while (pairSatellite != null);
+                        dataStr.add(satelliteCollection.getName() + "|" +
+                                pairSatellite.getName() + "|" +
+                                connected + "|" +
+                                currentTimeInSecond * 1000 + "|" +
+                                "1|3|" + (delay == -1 ? "0f" : "" + (float) delay) + "|" +
+                                "" + angleVelocity + "|" +
+                                satelliteCollection.getName() + "-" + pairSatellite.getName()
+                        );
+                    } while (pairSatellite != null);
+                }catch(Exception ex){
+                    ex.printStackTrace();
+                }
 
             });
         }
 
-
+        // Save to file
+        storageService.store(dataStr);
         return simulateResultDtos;
     }
 
