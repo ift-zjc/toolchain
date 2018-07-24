@@ -113,6 +113,7 @@ public class SimulateController {
                          * MsgSentTime:  millisecond after simulation start the message is generated
                          * MsgEffTime: millisecond after simulation start the message should be effective
                          */
+
                         simulateResultDtos.add(new SimulateResultDto(satelliteCollection.getName(),
                                 pairSatellite.getName(),
                                 connected,
@@ -121,7 +122,9 @@ public class SimulateController {
                                 3,
                                 delay == -1 ? 0f : (float) delay,
                                 angleVelocity,
-                                satelliteCollection.getName() + "-" + pairSatellite.getName()));
+                                delay == -1 ? 0f : (float)(Math.random()*1025),
+                                satelliteCollection.getName() + "-" + pairSatellite.getName())
+                                );
 //                    messageHubService.create(satelliteCollection.getName(), pairSatellite.getName(), currentTimeInSecond*1000, 1, 3, connected ? 1f: 0f, (float) delay);
 
                         dataStr.add(satelliteCollection.getName() + "|" +

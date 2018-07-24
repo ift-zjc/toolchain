@@ -50,6 +50,13 @@
         </div>
 
         <div class="col-md-3">
+            <!-- Image and text -->
+            <nav class="navbar navbar-light bg-dark">
+                <a class="navbar-brand" href="#">
+                    <span class="navbar-brand mb-0 h1 text-danger">Modeling, Simulation & Analysis Tool</span>
+                </a>
+                <img src="/Image/ift-logo.png" width="40" height="40" class="d-inline-block align-top bg-white" alt="">
+            </nav>
             <div id="gridStatistics"></div>
         </div>
     </div>
@@ -86,6 +93,20 @@
     <div class="row mt-2">
         <div class="col-sm-6">
             <div id="dgSimulateResult"></div>
+            <div id="appDiv" class="row" style="display: none;">
+                <div class="col-sm-3"><div id="appSelection"></div></div>
+                <div class="col-sm-9">
+                    <table class="table armyGreen">
+                        <tbody>
+                        <tr>
+                            <td>Source IP:Port/Type:&nbsp;<mark><strong><span id="appSource"></span></strong></mark>,&nbsp;<mark><strong><span id="appSourceType"></span></strong></mark>,&nbsp;
+                                Destination IP:Port/Type:&nbsp;<mark><strong><span id="appDest"></span></strong></mark>,&nbsp;<mark><strong><span id="appDestType"></span></strong></mark>,&nbsp;
+                                Protocol:&nbsp;<mark><strong><span id="protocol"></span></strong></mark></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
         <div class="col-sm-6">
             <div id="chartSimulateResult"></div>

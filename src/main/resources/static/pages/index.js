@@ -24,6 +24,12 @@ var satellitesArray = ["BIIF-1", "BIIF-2", "BIIF-3", "BIIF-4", "BIIF-5", "BIIF-6
     "BIIR-1", "BIIR-2", "BIIR-3", "BIIR-4", "BIIR-5", "BIIR-6", "BIIR-7", "BIIR-8", "BIIR-9", "BIIR-10", "BIIR-11", "BIIR-12", "BIIR-13",
     "BIIRM-1", "BIIRM-2", "BIIRM-3", "BIIRM-4", "BIIRM-5", "BIIRM-6", "BIIRM-7", "BIIRM-8"];
 
+var applicationArray = [{
+    name: "Application 1", source: "192.168.1.134:8234", sourceType: "Satellite", dest: "192.168.4.214:4623", destType: "Satellite", protocol: "TCP/IP"
+},{
+    name: "Application 2", source: "192.168.1.194:3564", sourceType: "Satellite", dest: "192.168.4.134:9302", destType: "Ground Station", protocol: "UDP"
+}]
+
 $(function(){
 
     initComponents();
@@ -112,198 +118,255 @@ $(function(){
      */
 
     // Check for browser support
-    if (typeof(Worker) !== "undefined") {
-        simulatorStart = $("#dtSimulateStart").dxDateBox({
-            type: "datetime",
-            min: viewer.clock.startTime,
-            max: viewer.clock.stopTime,
-            dateSerializationFormat: "yyyy-MM-ddTHH:mm:ssZ"
-        }).dxDateBox("instance");
+    simulatorStart = $("#dtSimulateStart").dxDateBox({
+        type: "datetime",
+        min: viewer.clock.startTime,
+        max: viewer.clock.stopTime,
+        dateSerializationFormat: "yyyy-MM-ddTHH:mm:ssZ"
+    }).dxDateBox("instance");
 
-        simulatorEnd = $("#dtSimulateEnd").dxDateBox({
-            type: "datetime",
-            min: viewer.clock.startTime,
-            max: viewer.clock.stopTime,
-            dateSerializationFormat: "yyyy-MM-ddTHH:mm:ssZ"
-        }).dxDateBox("instance");
+    simulatorEnd = $("#dtSimulateEnd").dxDateBox({
+        type: "datetime",
+        min: viewer.clock.startTime,
+        max: viewer.clock.stopTime,
+        dateSerializationFormat: "yyyy-MM-ddTHH:mm:ssZ"
+    }).dxDateBox("instance");
 
-        simulatorDelta = $("#deltaSimulate").dxNumberBox({
-            placeholder: 'Enter time delta',
-            min: 1,
-            max: 720
-        }).dxNumberBox("instance");
+    simulatorDelta = $("#deltaSimulate").dxNumberBox({
+        placeholder: 'Enter time delta',
+        min: 1,
+        max: 720
+    }).dxNumberBox("instance");
 
-        $('#popupSimulating').dxPopup({
+    $('#popupSimulating').dxPopup({
 
-            showTitle: false,
-            width: 600,
-            height: 'auto',
-            closeOnOutsideClick: true,
-            contentTemplate: function(e){
-                e.append('<p>Simulating in progress ... ...</p>');
-            }
-        });
+        showTitle: false,
+        width: 600,
+        height: 'auto',
+        closeOnOutsideClick: true,
+        contentTemplate: function(e){
+            e.append('<p>Simulating in progress ... ...</p>');
+        }
+    });
 
-        var btnGenerate = $("#dtBtnGenerate").dxButton({
-            text: "Start simulator",
-            onClick: function () {
-                console.log("Simulator start ....");
-                // simulator = new Worker("/js/simulator.js");
+    var appSelector = $('#appSelection').dxSelectBox({
 
-                // setTimeout(simulator, 100, Cesium.JulianDate.fromDate(new Date(simulatorStart.option("value"))),
-                //     Cesium.JulianDate.fromDate(new Date(simulatorEnd.option("value"))),
-                //     simulatorDelta.option("value"));
-                // simulator.onmessage = function (event){
-                //     console.log(event.data);
-                // }
+        placeholder: "Select an application...",
+        dataSource: new DevExpress.data.DataSource({
+            store: new DevExpress.data.ArrayStore({ data: applicationArray})
+        }),
+        valueExpr: 'name',
+        displayExpr: 'name',
+        onValueChanged: function(e){
+            // Get value
 
-                // var simulatorWindow = window.open("/simulate", '_blank');
+            var selectedAppArray = DevExpress.data.query(applicationArray).filter('name', '=', e.value).toArray();
+            var appValue = selectedAppArray[0];
+            // display
+            $('#appSource').html(appValue.source);
+            $('#appDest').html(appValue.dest);
+            $('#appSourceType').html(appValue.sourceType);
+            $('#appDestType').html(appValue.destType);
+            $('#protocol').html(appValue.protocol);
+        }
+    });
 
-                $("#popupSimulating").dxPopup("instance").show();
+    var btnGenerate = $("#dtBtnGenerate").dxButton({
+        text: "Start simulator",
+        onClick: function () {
+            console.log("Simulator start ....");
+            // simulator = new Worker("/js/simulator.js");
 
-                /**
-                 * Calling backend
-                 */
-                var offsetStart = Math.abs(Cesium.JulianDate.secondsDifference(Cesium.JulianDate.fromDate(new Date(simulatorStart.option("value"))),viewer.clock.startTime));
-                var offsetEnd = Math.abs(Cesium.JulianDate.secondsDifference(Cesium.JulianDate.fromDate(new Date(simulatorEnd.option("value"))),viewer.clock.startTime));
-                var delta = simulatorDelta.option("value");
-                var data = {'offsetStart': offsetStart, 'offsetEnd': offsetEnd, 'delta': delta};
-                var simulatorStartDateTime = viewer.clock.startTime;
-                $.ajax({
-                    url: '/simulate',
-                    type: 'POST',
-                    data: JSON.stringify(data),
-                    contentType: "application/json",
-                    success: function(data){
+            // setTimeout(simulator, 100, Cesium.JulianDate.fromDate(new Date(simulatorStart.option("value"))),
+            //     Cesium.JulianDate.fromDate(new Date(simulatorEnd.option("value"))),
+            //     simulatorDelta.option("value"));
+            // simulator.onmessage = function (event){
+            //     console.log(event.data);
+            // }
 
-                        $("#popupSimulating").dxPopup("instance").hide();
-                        // Load to data grid.
-                        var dgSimulationResult = $('#dgSimulateResult').dxDataGrid({
-                            dataSource: data,
-                            searchPanel: {
-                                visible: false
-                            },
-                            filterRow: {
-                                visible: true
-                            },
-                            paging:{
-                                pageSize: 10
-                            },
-                            columns: [
-                                {
-                                    dataField: "satelliteNameSource",
-                                    caption: "Satellite Source",
-                                    lookup: {
-                                        dataSource: satellitesArray
-                                    }
-                                },{
-                                    dataField: "satelliteNameDest",
-                                    caption: "Satellite Destination",
-                                    lookup: {
-                                        dataSource: satellitesArray
-                                    }
-                                },{
-                                    dataField: "offsetMillionSecond",
-                                    caption: "Simulation point (local time)",
-                                    cellTemplate: function (container, options){
-                                        var currentTime = Cesium.JulianDate.clone(viewer.clock.startTime);
-                                        currentTime = Cesium.JulianDate.addSeconds(simulatorStartDateTime, options.value/1000, currentTime);
-                                       $('<span>'+ moment(Cesium.JulianDate.toDate(currentTime).toISOString()).format('MMMM Do YYYY, h:mm:ss a') +'</span>').appendTo(container);
-                                    }
-                                }, "connected", "delay", "angelVelocity"],
-                            onRowPrepared: function (info){
-                                if(info.rowType == "data"){
-                                    info.rowElement.removeClass("dx-row-alt").addClass("bg-dark text-white");
+            // var simulatorWindow = window.open("/simulate", '_blank');
+
+            $("#popupSimulating").dxPopup("instance").show();
+
+            /**
+             * Calling backend
+             */
+            var offsetStart = Math.abs(Cesium.JulianDate.secondsDifference(Cesium.JulianDate.fromDate(new Date(simulatorStart.option("value"))),viewer.clock.startTime));
+            var offsetEnd = Math.abs(Cesium.JulianDate.secondsDifference(Cesium.JulianDate.fromDate(new Date(simulatorEnd.option("value"))),viewer.clock.startTime));
+            var delta = simulatorDelta.option("value");
+            var data = {'offsetStart': offsetStart, 'offsetEnd': offsetEnd, 'delta': delta};
+            var simulatorStartDateTime = viewer.clock.startTime;
+            $.ajax({
+                url: '/simulate',
+                type: 'POST',
+                data: JSON.stringify(data),
+                contentType: "application/json",
+                success: function(data){
+
+                    $("#popupSimulating").dxPopup("instance").hide();
+                    // Load to data grid.
+                    var dgSimulationResult = $('#dgSimulateResult').dxDataGrid({
+                        dataSource: data,
+                        searchPanel: {
+                            visible: false
+                        },
+                        filterRow: {
+                            visible: true
+                        },
+                        paging:{
+                            pageSize: 18
+                        },
+                        columns: [
+                            {
+                                dataField: "satelliteNameSource",
+                                caption: "Satellite Source",
+                                lookup: {
+                                    dataSource: satellitesArray
                                 }
+                            },{
+                                dataField: "satelliteNameDest",
+                                caption: "Satellite Destination",
+                                lookup: {
+                                    dataSource: satellitesArray
+                                }
+                            },{
+                                dataField: "offsetMillionSecond",
+                                caption: "Simulation point (local time)",
+                                cellTemplate: function (container, options){
+                                    var currentTime = Cesium.JulianDate.clone(viewer.clock.startTime);
+                                    currentTime = Cesium.JulianDate.addSeconds(simulatorStartDateTime, options.value/1000, currentTime);
+                                   $('<span>'+ moment(Cesium.JulianDate.toDate(currentTime).toISOString()).format('MMMM Do YYYY, h:mm:ss a') +'</span>').appendTo(container);
+                                }
+                            }, "connected",
+                            {
+                                dataField: "delay",
+                                caption: "Delay",
+                                cellTemplate: function (container, options){
+                                    var delayText = options.value == 0 ? "N/A" : options.value;
+                                    $('<span>' + delayText + '</span>').appendTo(container);
+                                }
+
+                            }, "angelVelocity",
+                            {
+                                dataField: "trafficLoading",
+                                caption: "Traffic Loading (MB)",
+                                cellTemplate: function (container, options){
+                                    var delayText = options.value == 0 ? "N/A" : options.value.toFixed(1);
+                                    $('<span>' + delayText + '</span>').appendTo(container);
+                                }
+                            }],
+                        onRowPrepared: function (info){
+                            if(info.rowType == "data"){
+                                info.rowElement.removeClass("dx-row-alt").addClass("bg-dark text-white");
                             }
-                        });
+                        }
+                    });
 
-                        // Load to chart
-                        var chartSimulateResult = $('#chartSimulateResult').dxChart({
-                            palette: "violet",
-                            dataSource: DevExpress.data.query(data)
-                                .filter("satelliteNameSource", "=", "BIIF-1")
-                                .filter("satelliteNameDest", "=", "BIIF-2").toArray(),
-                            commonSeriesSettings: {
-                                type: "spline",
-                                argumentField: "offsetMillionSecond"
-                            },
-                            argumentAxis: {
-                                argumentType: 'number',
-                                label: {
-                                    customizeText: function(obj) {
-                                        var currentTime = Cesium.JulianDate.clone(viewer.clock.startTime);
-                                        currentTime = Cesium.JulianDate.addSeconds(simulatorStartDateTime, obj.value / 1000, currentTime);
-                                        return moment(Cesium.JulianDate.toDate(currentTime).toISOString()).format('MMMM Do YYYY, h:mm:ss a');
-                                    },
-                                    font:{
-                                        color: '#57962B'
-                                    }
-                                }
-                            },
-                            series: [
-                                {valueField: "delay", name: "Delay", color: "#E03A16"}
-                            ],
-                            size: {
-                                height: 750
-                            },
-                            tooltip: {
-                                enabled: true
-                            },
-                            title: {
-                                text: "END-TO-END DELAY OF CROSSLINKS",
-                                subtitle: {
-                                    text: "BIIF-1 vs BIIF-2",
-                                    font: {
-                                        color: "#57962B",
-                                        size: 20,
-                                        weight: 800
-                                    }
+                    // Load to chart
+                    var chartSimulateResult = $('#chartSimulateResult').dxChart({
+                        palette: "violet",
+                        dataSource: DevExpress.data.query(data)
+                            .filter("satelliteNameSource", "=", "BIIF-1")
+                            .filter("satelliteNameDest", "=", "BIIF-2").toArray(),
+                        commonSeriesSettings: {
+                            type: "spline",
+                            argumentField: "offsetMillionSecond"
+                        },
+                        tooltip: {
+                            enabled: true,
+                            shared: true
+                        },
+                        argumentAxis: {
+                            argumentType: 'number',
+                            label: {
+                                customizeText: function(obj) {
+                                    var currentTime = Cesium.JulianDate.clone(viewer.clock.startTime);
+                                    currentTime = Cesium.JulianDate.addSeconds(simulatorStartDateTime, obj.value / 1000, currentTime);
+                                    return moment(Cesium.JulianDate.toDate(currentTime).toISOString()).format('MMMM Do YYYY, h:mm:ss a');
                                 },
                                 font:{
-                                    color: "white"
+                                    color: '#57962B'
                                 }
                             }
-
-
-                        }).dxChart("instance");
-
-                        var selectFrom = $("#selectFrom").dxSelectBox({
-                            dataSource: satellitesArray,
-                            value: satellitesArray[0]
-                        }).dxSelectBox("instance");
-
-                        var selectTo = $("#selectTo").dxSelectBox({
-                            dataSource: satellitesArray,
-                            value: satellitesArray[1]
-                        }).dxSelectBox("instance");
-
-                        $("#btnRefresh").dxButton({
-                            text: "Refresh Chart",
-                            onClick: function (e) {
-                                var refreshedDs = DevExpress.data.query(data)
-                                        .filter(function (dataItem){
-                                            return (dataItem.satelliteNameSource == selectFrom.option("value")) ||
-                                                (dataItem.satelliteNameSource == selectTo.option("value"));
-                                        })
-                                        .filter(function (dataItem) {
-                                            return (dataItem.satelliteNameDest == selectFrom.option("value")) ||
-                                            (dataItem.satelliteNameDest == selectTo.option("value"));
-                                        }).toArray();
-
-                                chartSimulateResult.option("dataSource", refreshedDs);
-                                chartSimulateResult.option("title.subtitle.text", selectFrom.option("value") + " vs " + selectTo.option("value"));
+                        },
+                        series: [
+                            {valueField: "delay", name: "Delay", color: "#E03A16", position: "left", axis: "delay"},
+                            {valueField: "angelVelocity", name: "Angel Velocity", color: "#57962B", position: "right", axis: "av"}
+                        ],
+                        valueAxis:[{
+                            name: "delay",
+                            position: "left",
+                            grid: {
+                                visible: true
+                            },
+                            title: {text: "Delay (second)"}
+                        },{
+                            name: "av",
+                            position: "right",
+                            grid: {
+                                visible: true
+                            },
+                            title: {
+                                text: "Angel Velocity (rad/s)"
                             }
-                        });
-                    }
+                        }],
+                        size: {
+                            height: 750
+                        },
+                        title: {
+                            text: "END-TO-END DELAY / ANGULAR VELOCITY OF CROSSLINKS",
+                            subtitle: {
+                                text: "BIIF-1 vs BIIF-2",
+                                font: {
+                                    color: "#57962B",
+                                    size: 20,
+                                    weight: 800
+                                }
+                            },
+                            font:{
+                                color: "white"
+                            }
+                        }
 
-                })
-            }
-        })
-    }else{
-        // Not support
-        alert("Your web browser doesn't support simulator");
-    }
+
+                    }).dxChart("instance");
+
+                    var selectFrom = $("#selectFrom").dxSelectBox({
+                        dataSource: satellitesArray,
+                        value: satellitesArray[0]
+                    }).dxSelectBox("instance");
+
+                    var selectTo = $("#selectTo").dxSelectBox({
+                        dataSource: satellitesArray,
+                        value: satellitesArray[1]
+                    }).dxSelectBox("instance");
+
+                    $("#btnRefresh").dxButton({
+                        text: "Refresh Chart",
+                        onClick: function (e) {
+                            var refreshedDs = DevExpress.data.query(data)
+                                    .filter(function (dataItem){
+                                        return (dataItem.satelliteNameSource == selectFrom.option("value")) ||
+                                            (dataItem.satelliteNameSource == selectTo.option("value"));
+                                    })
+                                    .filter(function (dataItem) {
+                                        return (dataItem.satelliteNameDest == selectFrom.option("value")) ||
+                                        (dataItem.satelliteNameDest == selectTo.option("value"));
+                                    }).toArray();
+
+                            chartSimulateResult.option("dataSource", refreshedDs);
+                            chartSimulateResult.option("title.subtitle.text", selectFrom.option("value") + " vs " + selectTo.option("value"));
+                        }
+                    });
+
+                    // Show application div
+                    $('#appDiv').show();
+                }
+
+            })
+        }
+    });
+
 });
 
 

@@ -15,6 +15,7 @@ public class SimulateResultDto {
     private int msgSubType;
     private float delay;
     private double angelVelocity;
+    private float trafficLoading;
 
 
     private String argumentField;   // For DxChant display only.
