@@ -246,7 +246,10 @@ $(function(){
                                     $('<span>' + delayText + '</span>').appendTo(container);
                                 }
 
-                            }, "angelVelocity",
+                            }, {
+                                dataField: "angelVelocity",
+                                caption: "Angluar Velocity"
+                            },
                             {
                                 dataField: "trafficLoading",
                                 caption: "Traffic Loading (MB)",
@@ -290,8 +293,8 @@ $(function(){
                             }
                         },
                         series: [
-                            {valueField: "delay", name: "Delay", color: "#E03A16", position: "left", axis: "delay"},
-                            {valueField: "angelVelocity", name: "Angel Velocity", color: "#57962B", position: "right", axis: "av"}
+                            {valueField: "delay", name: "Propagation Delay", color: "#E03A16", position: "left", axis: "delay"},
+                            {valueField: "angelVelocity", name: "Angular Velocity", color: "#57962B", position: "right", axis: "av"}
                         ],
                         valueAxis:[{
                             name: "delay",
@@ -299,7 +302,7 @@ $(function(){
                             grid: {
                                 visible: true
                             },
-                            title: {text: "Delay (second)"}
+                            title: {text: "Propagation Delay (second)"}
                         },{
                             name: "av",
                             position: "right",
@@ -307,7 +310,7 @@ $(function(){
                                 visible: true
                             },
                             title: {
-                                text: "Angel Velocity (rad/s)"
+                                text: "Angular Velocity (rad/s)"
                             }
                         }],
                         size: {
