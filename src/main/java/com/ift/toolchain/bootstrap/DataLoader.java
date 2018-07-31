@@ -2,10 +2,13 @@ package com.ift.toolchain.bootstrap;
 
 import com.ift.toolchain.Service.DataInitService;
 import com.ift.toolchain.Service.OrbitService;
+import com.ift.toolchain.Service.TrafficeModelService;
+import com.ift.toolchain.model.TrafficModel;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.stereotype.Component;
@@ -26,6 +29,10 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
 
     @Autowired
     DataInitService dataInitService;
+
+    @Qualifier("rdtTrafficModelService")
+    @Autowired
+    TrafficeModelService rdtTrafficeModelService;
 
     @Override
     public void onApplicationEvent(ContextRefreshedEvent contextRefreshedEvent) {
@@ -102,6 +109,14 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
         }catch (Exception ex){
             ex.printStackTrace();
         }
+
+
+        // Traffice model
+        TrafficModel trafficModel = new TrafficModel();
+        trafficModel.setCode("TM1");
+        trafficModel.setName("Random Traffic Model 1");
+        trafficModel.setDescription("Testing traffice model");
+        rdtTrafficeModelService.create(trafficModel);
 
     }
 }

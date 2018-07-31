@@ -28,7 +28,11 @@ var applicationArray = [{
     name: "Application 1", source: "192.168.1.134:8234", sourceType: "Satellite", dest: "192.168.4.214:4623", destType: "Satellite", protocol: "TCP/IP"
 },{
     name: "Application 2", source: "192.168.1.194:3564", sourceType: "Satellite", dest: "192.168.4.134:9302", destType: "Ground Station", protocol: "UDP"
-}]
+}];
+
+
+// Traffic model
+var trafficModelData;
 
 $(function(){
 
@@ -194,8 +198,9 @@ $(function(){
             var offsetStart = Math.abs(Cesium.JulianDate.secondsDifference(Cesium.JulianDate.fromDate(new Date(simulatorStart.option("value"))),viewer.clock.startTime));
             var offsetEnd = Math.abs(Cesium.JulianDate.secondsDifference(Cesium.JulianDate.fromDate(new Date(simulatorEnd.option("value"))),viewer.clock.startTime));
             var delta = simulatorDelta.option("value");
-            var data = {'offsetStart': offsetStart, 'offsetEnd': offsetEnd, 'delta': delta};
+            var data = {'offsetStart': offsetStart, 'offsetEnd': offsetEnd, 'delta': delta, 'appData': dsApplications.items()};
             var simulatorStartDateTime = viewer.clock.startTime;
+            var stepsInseconds = offsetEnd - offsetStart;
             $.ajax({
                 url: '/simulate',
                 type: 'POST',
@@ -206,7 +211,7 @@ $(function(){
                     $("#popupSimulating").dxPopup("instance").hide();
                     // Load to data grid.
                     var dgSimulationResult = $('#dgSimulateResult').dxDataGrid({
-                        dataSource: data,
+                        dataSource: data.simulateResultDtos,
                         searchPanel: {
                             visible: false
                         },
@@ -214,7 +219,7 @@ $(function(){
                             visible: true
                         },
                         paging:{
-                            pageSize: 18
+                            pageSize: 6
                         },
                         columns: [
                             {
@@ -268,7 +273,7 @@ $(function(){
                     // Load to chart
                     var chartSimulateResult = $('#chartSimulateResult').dxChart({
                         palette: "violet",
-                        dataSource: DevExpress.data.query(data)
+                        dataSource: DevExpress.data.query(data.simulateResultDtos)
                             .filter("satelliteNameSource", "=", "BIIF-1")
                             .filter("satelliteNameDest", "=", "BIIF-2").toArray(),
                         commonSeriesSettings: {
@@ -347,7 +352,7 @@ $(function(){
                     $("#btnRefresh").dxButton({
                         text: "Refresh Chart",
                         onClick: function (e) {
-                            var refreshedDs = DevExpress.data.query(data)
+                            var refreshedDs = DevExpress.data.query(data.simulateResultDtos)
                                     .filter(function (dataItem){
                                         return (dataItem.satelliteNameSource == selectFrom.option("value")) ||
                                             (dataItem.satelliteNameSource == selectTo.option("value"));
@@ -364,14 +369,258 @@ $(function(){
 
                     // Show application div
                     $('#appDiv').show();
+
+                    /**
+                     * Application traffic chart
+                     */
+
+                    // Construct datasource
+                    var dsTrafficChart="[";
+                    for (var i = 0; i < stepsInseconds; i++){
+                        // JSON string
+                        var jsonStr = '{"offset": ' + i;
+
+                        // Loop the data to find traffic @ i
+                        _.map(data.applicationTraffic, function (appTraffic){
+                           var name = appTraffic.appName;
+                           var trafficVolumnItem = _.find(appTraffic.applicationTrafficDataList, function(trafficDataItem){
+                               return trafficDataItem.offsetMillionSecond == i;
+                           });
+                           var trafficVolumn = 0;
+                           if(! _.isUndefined(trafficVolumnItem)){
+                               trafficVolumn = trafficVolumnItem.trafficVolumn
+                           }
+                           jsonStr += ', "' + name + '": ' + trafficVolumn;
+                        });
+
+                        jsonStr += "},";
+
+                        dsTrafficChart += jsonStr;
+                    }
+                    // Remove last ,
+                    dsTrafficChart = dsTrafficChart.slice(0, -1) + ']';
+
+                    // Convert to JSON
+                    dsTrafficChart = JSON.parse(dsTrafficChart);
+
+                    // Add serial
+                    seriesTraffic = "[";
+                    _.map(data.applicationTraffic, function (appTrafficS){
+                        var name = appTrafficS.appName;
+                        seriesTraffic += '{"valueField": "' + name + '", "name": "' + name + '"},'
+                    });
+
+                    seriesTraffic = seriesTraffic.slice(0, -1) + "]";
+                    seriesTraffic = JSON.parse(seriesTraffic);
+
+                    chartApplications = $("#chartApps").dxChart({
+                        palette: "soft",
+                        dataSource: dsTrafficChart,
+                        commonSeriesSettings: {
+                            barPadding: 0.2,
+                            argumentField: "offset",
+                            type: "bar"
+                        },
+                        legend: {
+                            verticalAlignment: "bottom",
+                            horizontalAlignment: "center"
+                        },
+                        title: {
+                            text: "Applications Traffic",
+                            font: {
+                                color: "white"
+                            }
+                        },
+                        series: seriesTraffic,
+                        argumentAxis: {
+                            argumentType: 'number',
+                            label: {
+                                customizeText: function(obj) {
+                                    var currentTime = Cesium.JulianDate.clone(viewer.clock.startTime);
+                                    currentTime = Cesium.JulianDate.addSeconds(simulatorStartDateTime, 1, currentTime);
+                                    return moment(Cesium.JulianDate.toDate(currentTime).toISOString()).format('MMMM Do YYYY, h:mm:ss a');
+                                },
+                                font:{
+                                    color: '#57962B'
+                                }
+                            }
+                        }
+                    })
                 }
 
             })
         }
     });
 
+    initTrafficModule();
+
 });
 
+var applicationsData;
+var dgApplications;
+var dsApplications;
+var protocols = [{name: "TCP", value: "TCP"}, {name: "UDP", value: "UDP"}];
+var tmDatasource;
+var chartApplications;
+function initTrafficModule(){
+
+    tmDatasource = new DevExpress.data.CustomStore({
+        load: function (loadOptions){
+            var deferred = $.Deferred();
+
+            $.ajax({
+                url: "/api/tmlist",
+                type: "POST",
+                success: function(result){
+                    deferred.resolve(result.items, {totalCount: result.totalCount});
+                },
+                error: function(){
+                    deferred.reject("TrafficeModel Loading Error");
+                },
+                timeout: 5000
+            });
+
+            return deferred.promise();
+        },
+
+        byKey: function(key){
+            var d = new $.Deferred();
+            $.post("/api/tm/"+key)
+                .done(function (result){
+                d.resolve(result)
+            });
+
+            return d.promise();
+        }
+    });
+
+    applicationsData = [{
+        id: "abc", name: "app1", source: "abc", dest: "bcd", protocol: "TCP",
+        tm: "TM1", startOffset: "0", endOffset: "100"
+    }];
+
+    dsApplications = new DevExpress.data.DataSource({
+        store: {
+            type: "local",
+            name: "AppDataLocalStore",
+            key: "id",
+            data: applicationsData
+        }
+    });
+
+
+
+
+    // Initial datagrid
+    dgApplications = $('#dgApps').dxDataGrid({
+        dataSource: dsApplications,
+        noDataText: "No application data ...",
+        editing: {
+            allowUpdating: true,
+            allowAdding: true,
+            allowDeleting: true,
+            mode: "popup",
+            popup: {
+                title: "Application Information",
+                showTitle: true,
+                width: 800,
+                height: 520
+            },
+            form: {
+                items: [
+                    {itemType: "group",
+                    caption: "Application Information",
+                    items: ["name", "tm"]
+                    },
+                    {
+                    itemType: "group",
+                    caption: "Crosslink information",
+                    items: ["source","dest", "protocol"]
+                },{
+                    itemType: "group",
+                        colSpan: 2,
+                        colCount: 2,
+                        caption: "Execution Time (in seconds)",
+                        items: ["startOffset", "endOffset"]
+                    }]
+            }
+        },
+        searchPanel: {
+            visible: true
+        },
+        columns: ["name", {
+            caption: "Source & Destination",
+            columns: [
+                {
+                    dataField: "source",
+                    caption: "Source",
+                    dataType: "String",
+                    validationRules: [{type: "required"}],
+                    lookup: {dataSource: satellitesArray}
+                }, {
+                    dataField: "dest",
+                    caption: "Destination",
+                    dataType: "String",
+                    validationRules: [{type: "required"}],
+                    lookup: {dataSource: satellitesArray}
+                }
+            ]
+        },{
+            dataField: "protocol",
+            caption: "Protocol",
+            dataType: "String",
+            validationRules: [{ type: "required" }],
+            lookup: {
+                dataSource: protocols,
+                valueExpr: "name",
+                displayExpr: "name"
+            }
+        }, {
+            dataField: "tm",
+            caption: "Traffic Model",
+            dataType: "String",
+            lookup: {
+                dataSource: tmDatasource,
+                valueExpr: "tmCode",
+                displayExpr: "tmName"
+            }
+        },{
+            caption: "Time Range",
+            // columns: [{
+            //     dataField: "startOffset",
+            //     caption: "Start Offset",
+            //     dataType: "number"
+            // }, {
+            //     dataField: "endOffset",
+            //     caption: "End Offset",
+            //     dataType: "number"
+            // }],
+            cellTemplate: function (container, options) {
+                $('<span>Start at ' + options.data.startOffset + ' seconds to ' + options.data.endOffset  + ' seconds</span>').appendTo(container);
+            },
+            formItem: {
+                visible: false
+            }
+        },{
+                dataField: "startOffset",
+                caption: "Start Offset",
+                dataType: "number",
+                visible: false
+            },
+            {
+                dataField: "endOffset",
+                caption: "End Offset",
+                dataType: "number",
+                visible: false
+        }],
+        onRowPrepared: function (info){
+            if(info.rowType == "data"){
+                info.rowElement.removeClass("dx-row-alt").addClass("bg-dark text-white");
+            }
+        }
+    }).dxDataGrid("instance");
+
+}
 
 function simulator(start, end, count){
     var _viewer = new Cesium.Viewer('_cesiumContainer', {

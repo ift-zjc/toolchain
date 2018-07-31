@@ -92,21 +92,15 @@
     </div>
     <div class="row mt-2">
         <div class="col-sm-6">
-            <div id="dgSimulateResult"></div>
-            <div id="appDiv" class="row" style="display: none;">
-                <div class="col-sm-2"><div id="appSelection" class="mt-1"></div></div>
-                <div class="col-sm-10">
-                    <table class="table armyGreen">
-                        <tbody>
-                        <tr>
-                            <td>Source IP:Port/Type:&nbsp;<mark><strong><span id="appSource"></span></strong></mark>,&nbsp;<mark><strong><span id="appSourceType"></span></strong></mark>,&nbsp;
-                                Destination IP:Port/Type:&nbsp;<mark><strong><span id="appDest"></span></strong></mark>,&nbsp;<mark><strong><span id="appDestType"></span></strong></mark>,&nbsp;
-                                Protocol:&nbsp;<mark><strong><span id="protocol"></span></strong></mark></td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </div>
+            <div class="row tm-2 bm-2">
+                <span class="float-right tm-2 bm-2">
+                    <button type="button" class="btn btn-outline-success disabled" id="btnUploadScenarios">Upload Scenarios</button>
+                </span>
             </div>
+            <div class="row">
+                <div id="dgApps"></div>
+            </div>
+            <div id="chartApps"></div>
         </div>
         <div class="col-sm-6">
             <div id="chartSimulateResult"></div>
@@ -115,9 +109,14 @@
                 <div id="selectTo"></div>&nbsp;&nbsp;
                 <div id="btnRefresh"></div>
             </div>
+            <div class="row mt-2">
+                <div id="dgSimulateResult"></div>
+            </div>
         </div>
     </div>
 </div>
+
+<!--<div id="rangeSelector"></div>-->
 
 
 

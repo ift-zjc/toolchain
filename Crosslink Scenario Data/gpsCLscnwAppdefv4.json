@@ -547,9 +547,18 @@
 
 		],
 		"scnAppDef":[
-			{"AppName":"app1", "srcType":1, "srcID":39533, "destType":1,"destID":38833, "AppType":"TCP"},
-			{"AppName":"app2", "srcType":1, "srcID":38833, "destType":1,"destID":39533, "AppType":"TCP"},
+			{"AppName":"app1", "srcType":1, "srcID":39533, "destType":1,"destID":38833, "AppType":"TCP",
+				"Config":[{"paraName":"srcPort","num":10020},
+					{"paraName":"destPort","num":10021}
+				],
+				"trafficModel": "rdt"
+			},
+			{"AppName":"app2", "srcType":1, "srcID":38833, "destType":1,"destID":39533, "AppType":"TCP",
+				"Config":[{"paraName":"srcPort","num":9020},
+					{"paraName":"destPort","num":9021}
+				],
+				"trafficeModel": "radt"
+			}
 		]
-
 	}
 }

@@ -3,10 +3,7 @@ package com.ift.toolchain.controller;
 
 import com.ift.toolchain.Service.MessageHubService;
 import com.ift.toolchain.Service.StorageService;
-import com.ift.toolchain.dto.SatelliteCollection;
-import com.ift.toolchain.dto.SatelliteDto;
-import com.ift.toolchain.dto.SatellitePosition;
-import com.ift.toolchain.dto.SimulateResultDto;
+import com.ift.toolchain.dto.*;
 import com.ift.toolchain.model.Satellite;
 import com.ift.toolchain.util.CommonUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,10 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
@@ -35,12 +29,13 @@ public class SimulateController {
     StorageService storageService;
 
     @PostMapping(value = "/simulate", consumes = "application/json")
-    public List<SimulateResultDto> simulate(@RequestBody Map<String, Object> payload){
+    public SimulateData simulate(@RequestBody Map<String, Object> payload){
         List<String> dataStr = new ArrayList<>();
         int startOffset = (int) Float.parseFloat(payload.get("offsetStart").toString());
         int endOffset = (int) Float.parseFloat(payload.get("offsetEnd").toString());
         int delta = (int) Float.parseFloat(payload.get("delta").toString()) * 60;   // Minute
         delta = delta == 0 ? 60 : delta;
+        List<HashMap<String, String>> applicationDtos = (List<HashMap<String, String>>) payload.get("appData");
 
         List<SimulateResultDto> simulateResultDtos = new ArrayList<>();
 
@@ -145,7 +140,44 @@ public class SimulateController {
 
         // Save to file
         storageService.store(dataStr);
-        return simulateResultDtos;
+
+
+        List<ApplicationTraffic> applicationTraffics = new ArrayList<>();
+        /**
+         * Simulate application traffic model
+         */
+
+
+
+        for(HashMap<String, String> hashMap : applicationDtos){
+            long so = Long.parseLong(hashMap.get("startOffset"));
+            long eo = Long.parseLong(hashMap.get("endOffset"));
+            ApplicationTraffic applicationTraffic = new ApplicationTraffic();
+            applicationTraffic.setAppName(hashMap.get("name"));
+
+            List<ApplicationTrafficData> applicationTrafficDataList = new ArrayList<>();
+            for(long j = so; j <= eo;  j += 10) {
+                float dataVolumn = 0f;
+                // Get data volumn for this particular time based on different traffic model.
+                dataVolumn = (float) (Math.random() * 1025);
+
+                ApplicationTrafficData applicationTrafficData = new ApplicationTrafficData();
+                applicationTrafficData.setOffsetMillionSecond(j);
+                applicationTrafficData.setTrafficVolumn(dataVolumn);
+
+                applicationTrafficDataList.add(applicationTrafficData);
+            }
+
+            applicationTraffic.setApplicationTrafficDataList(applicationTrafficDataList);
+            applicationTraffics.add(applicationTraffic);
+        }
+
+
+        SimulateData simulateData = new SimulateData();
+        simulateData.setSimulateResultDtos(simulateResultDtos);
+        simulateData.setApplicationTraffic(applicationTraffics);
+
+        return simulateData;
     }
 
 
