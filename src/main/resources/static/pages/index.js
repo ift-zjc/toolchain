@@ -495,8 +495,8 @@ function initTrafficModule(){
     });
 
     applicationsData = [{
-        id: "abc", name: "app1", source: "abc", dest: "bcd", protocol: "TCP",
-        tm: "TM1", startOffset: "0", endOffset: "100"
+        id: "abc", name: "File transfer", source: "BIIF-1", dest: "BIIF-2", protocol: "TCP",
+        tm: "TM1", startOffset: "23", endOffset: "540"
     }];
 
     dsApplications = new DevExpress.data.DataSource({
