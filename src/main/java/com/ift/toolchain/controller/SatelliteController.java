@@ -27,7 +27,7 @@ public class SatelliteController {
     public List<SatelliteCollection> initSatelliteData(){
         List<SatelliteCollection> satelliteCollections = new ArrayList<>();
 //         String satellitePositionFolder = "C:\\Users\\zhijiang\\Documents\\Projects\\toolchain\\Crosslink Scenario Data\\Orbit Information";
-        String satellitePositionFolder = "/root/toolchain/Crosslink Scenario Data/Orbit Information";
+        String satellitePositionFolder = "/home/cloud_ift/toolchain/Crosslink Scenario Data/Orbit Information";
         final int[] sort = {0};
         try {
             Files.list(Paths.get(satellitePositionFolder))
