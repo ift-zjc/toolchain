@@ -18,6 +18,7 @@ var simulatorStart;
 var simulatorEnd;
 var simulatorDelta;
 var simulator;
+var dsObjects;
 
 
 var satellitesArray = ["BIIF-1", "BIIF-2", "BIIF-3", "BIIF-4", "BIIF-5", "BIIF-6", "BIIF-7", "BIIF-8", "BIIF-9", "BIIF-10", "BIIF-11", "BIIF-12",
@@ -210,65 +211,65 @@ $(function(){
 
                     $("#popupSimulating").dxPopup("instance").hide();
                     // Load to data grid.
-                    var dgSimulationResult = $('#dgSimulateResult').dxDataGrid({
-                        dataSource: data.simulateResultDtos,
-                        searchPanel: {
-                            visible: false
-                        },
-                        filterRow: {
-                            visible: true
-                        },
-                        paging:{
-                            pageSize: 6
-                        },
-                        columns: [
-                            {
-                                dataField: "satelliteNameSource",
-                                caption: "Satellite Source",
-                                lookup: {
-                                    dataSource: satellitesArray
-                                }
-                            },{
-                                dataField: "satelliteNameDest",
-                                caption: "Satellite Destination",
-                                lookup: {
-                                    dataSource: satellitesArray
-                                }
-                            },{
-                                dataField: "offsetMillionSecond",
-                                caption: "Simulation point (local time)",
-                                cellTemplate: function (container, options){
-                                    var currentTime = Cesium.JulianDate.clone(viewer.clock.startTime);
-                                    currentTime = Cesium.JulianDate.addSeconds(simulatorStartDateTime, options.value/1000, currentTime);
-                                   $('<span>'+ moment(Cesium.JulianDate.toDate(currentTime).toISOString()).format('MMMM Do YYYY, h:mm:ss a') +'</span>').appendTo(container);
-                                }
-                            }, "connected",
-                            {
-                                dataField: "delay",
-                                caption: "Delay",
-                                cellTemplate: function (container, options){
-                                    var delayText = options.value == 0 ? "N/A" : options.value;
-                                    $('<span>' + delayText + '</span>').appendTo(container);
-                                }
-
-                            }, {
-                                dataField: "angelVelocity",
-                                caption: "Angluar Velocity"
-                            },
-                            {
-                                dataField: "trafficLoading",
-                                caption: "Traffic Loading (MB)",
-                                cellTemplate: function (container, options){
-                                    var delayText = options.value == 0 ? "N/A" : options.value.toFixed(1);
-                                    $('<span>' + delayText + '</span>').appendTo(container);
-                                }
-                            }],
-                        onRowPrepared: function (info){
-                            if(info.rowType == "data"){
-                                info.rowElement.removeClass("dx-row-alt").addClass("bg-dark text-white");
-                            }
-                        }
-                    });
+                    // var dgSimulationResult = $('#dgSimulateResult').dxDataGrid({
+                    //     dataSource: data.simulateResultDtos,
+                    //     searchPanel: {
+                    //         visible: false
+                    //     },
+                    //     filterRow: {
+                    //         visible: true
+                    //     },
+                    //     paging:{
+                    //         pageSize: 6
+                    //     },
+                    //     columns: [
+                    //         {
+                    //             dataField: "satelliteNameSource",
+                    //             caption: "Satellite Source",
+                    //             lookup: {
+                    //                 dataSource: satellitesArray
+                    //             }
+                    //         },{
+                    //             dataField: "satelliteNameDest",
+                    //             caption: "Satellite Destination",
+                    //             lookup: {
+                    //                 dataSource: satellitesArray
+                    //             }
+                    //         },{
+                    //             dataField: "offsetMillionSecond",
+                    //             caption: "Simulation point (local time)",
+                    //             cellTemplate: function (container, options){
+                    //                 var currentTime = Cesium.JulianDate.clone(viewer.clock.startTime);
+                    //                 currentTime = Cesium.JulianDate.addSeconds(simulatorStartDateTime, options.value/1000, currentTime);
+                    //                $('<span>'+ moment(Cesium.JulianDate.toDate(currentTime).toISOString()).format('MMMM Do YYYY, h:mm:ss a') +'</span>').appendTo(container);
+                    //             }
+                    //         }, "connected",
+                    //         {
+                    //             dataField: "delay",
+                    //             caption: "Delay",
+                    //             cellTemplate: function (container, options){
+                    //                 var delayText = options.value == 0 ? "N/A" : options.value;
+                    //                 $('<span>' + delayText + '</span>').appendTo(container);
+                    //             }
+                    //
+                    //         }, {
+                    //             dataField: "angelVelocity",
+                    //             caption: "Angluar Velocity"
+                    //         },
+                    //         {
+                    //             dataField: "trafficLoading",
+                    //             caption: "Traffic Loading (MB)",
+                    //             cellTemplate: function (container, options){
+                    //                 var delayText = options.value == 0 ? "N/A" : options.value.toFixed(1);
+                    //                 $('<span>' + delayText + '</span>').appendTo(container);
+                    //             }
+                    //         }],
+                    //     onRowPrepared: function (info){
+                    //         if(info.rowType == "data"){
+                    //             info.rowElement.removeClass("dx-row-alt").addClass("bg-dark text-white");
+                    //         }
+                    //     }
+                    // });
 
                     // Load to chart
                     var chartSimulateResult = $('#chartSimulateResult').dxChart({
@@ -334,9 +335,15 @@ $(function(){
                             font:{
                                 color: "white"
                             }
+                        },
+                        onLegendClick: function (e) {
+                            var series = e.target;
+                            if (series.isVisible()) {
+                                series.hide();
+                            } else {
+                                series.show();
+                            }
                         }
-
-
                     }).dxChart("instance");
 
                     var selectFrom = $("#selectFrom").dxSelectBox({
@@ -437,12 +444,20 @@ $(function(){
                             label: {
                                 customizeText: function(obj) {
                                     var currentTime = Cesium.JulianDate.clone(viewer.clock.startTime);
-                                    currentTime = Cesium.JulianDate.addSeconds(simulatorStartDateTime, 1, currentTime);
+                                    currentTime = Cesium.JulianDate.addSeconds(simulatorStartDateTime, obj.value, currentTime);
                                     return moment(Cesium.JulianDate.toDate(currentTime).toISOString()).format('MMMM Do YYYY, h:mm:ss a');
                                 },
                                 font:{
                                     color: '#57962B'
                                 }
+                            }
+                        },
+                        onLegendClick: function (e) {
+                            var series = e.target;
+                            if (series.isVisible()) {
+                                series.hide();
+                            } else {
+                                series.show();
                             }
                         }
                     })
@@ -451,6 +466,32 @@ $(function(){
             })
         }
     });
+
+
+    // Object datasource
+    dsObjects = new DevExpress.data.CustomStore({
+           load: function(loadOptions){
+               var deferred = $.Deferred();
+
+               $.ajax({
+                   url: "/api/objectlist",
+                   type: "GET",
+                   success: function(result){
+                       deferred.resolve(result, {totalCount: result.length});
+                   },
+                   error: function(){
+                       deferred.reject ("Object data loading error ...");
+                   },
+                   timeout: 1000
+               });
+
+               return deferred.promise();
+           },
+
+            byKey: function(key){
+
+            }
+       });
 
     initTrafficModule();
 
@@ -556,13 +597,23 @@ function initTrafficModule(){
                     caption: "Source",
                     dataType: "String",
                     validationRules: [{type: "required"}],
-                    lookup: {dataSource: satellitesArray}
+                    lookup: {
+                        dataSource: dsObjects,
+                        valueExpr: "id",
+                        grouped: true,
+                        displayExpr: "name"
+                    }
                 }, {
                     dataField: "dest",
                     caption: "Destination",
                     dataType: "String",
                     validationRules: [{type: "required"}],
-                    lookup: {dataSource: satellitesArray}
+                    lookup: {
+                        dataSource: dsObjects,
+                        valueExpr: "id",
+                        grouped: true,
+                        displayExpr: "name"
+                    }
                 }
             ]
         },{

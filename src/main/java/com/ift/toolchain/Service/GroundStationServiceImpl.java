@@ -5,6 +5,8 @@ import com.ift.toolchain.repository.GroundStationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class GroundStationServiceImpl implements GroundStationService {
 
@@ -14,5 +16,10 @@ public class GroundStationServiceImpl implements GroundStationService {
     @Override
     public GroundStation save(GroundStation groundStation) {
         return groundStationRepository.save(groundStation);
+    }
+
+    @Override
+    public List<GroundStation> getAll() {
+        return groundStationRepository.findAll();
     }
 }

@@ -13,4 +13,5 @@ public interface SatelliteService {
     public Satellite findByName(String satelliteName);
     public List<Satellite> getSatelliesOnSameOrb(String satelliteName);
     public Satellite updateSatellite(String satelliteName, String satelliteId);
+    public List<Satellite> getAll();
 }

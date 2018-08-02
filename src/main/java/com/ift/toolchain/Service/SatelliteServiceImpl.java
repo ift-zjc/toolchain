@@ -49,4 +49,9 @@ public class SatelliteServiceImpl implements SatelliteService {
         satellite.setSatelliteId(satelliteId);
         return save(satellite);
     }
+
+    @Override
+    public List<Satellite> getAll() {
+        return satelliteRepository.findAll();
+    }
 }

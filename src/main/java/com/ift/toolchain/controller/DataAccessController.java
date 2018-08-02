@@ -1,16 +1,20 @@
 package com.ift.toolchain.controller;
 
-import com.ift.toolchain.Service.MessageHubService;
-import com.ift.toolchain.Service.TrafficeModelGenericService;
-import com.ift.toolchain.Service.TrafficeModelService;
+import com.ift.toolchain.Service.*;
 import com.ift.toolchain.dto.DataGridTM;
+import com.ift.toolchain.dto.ObjectDto;
 import com.ift.toolchain.dto.ObjectEvent;
 import com.ift.toolchain.dto.TrafficeModelDto;
+import com.ift.toolchain.model.GroundStation;
 import com.ift.toolchain.model.MessageHub;
+import com.ift.toolchain.model.Satellite;
 import com.ift.toolchain.model.TrafficModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * API controller
@@ -22,6 +26,10 @@ public class DataAccessController {
 
     @Autowired
     MessageHubService messageHubService;
+    @Autowired
+    SatelliteService satelliteService;
+    @Autowired
+    GroundStationService groundStationService;
 
 
     @Autowired
@@ -62,5 +70,26 @@ public class DataAccessController {
         trafficeModelDto.setTmDesc(trafficModel.getDescription());
 
         return trafficeModelDto;
+    }
+
+
+    @GetMapping(value = "/objectlist", produces = "application/json")
+    public List<ObjectDto> getAllObjects(){
+        List<ObjectDto> objectDtos = new ArrayList<>();
+        // Get satellites
+        List<Satellite> satellites = satelliteService.getAll();
+        // Get ground stations
+        List<GroundStation> groundStations = groundStationService.getAll();
+
+        groundStations.forEach(groundStation -> {
+            objectDtos.add(new ObjectDto(groundStation.getId(), groundStation.getName(), "Ground station"));
+        });
+
+        satellites.forEach(satellite -> {
+            objectDtos.add(new ObjectDto(satellite.getId(), satellite.getName(), "Satellite"));
+        });
+
+
+        return objectDtos;
     }
 }
