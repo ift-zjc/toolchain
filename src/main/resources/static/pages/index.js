@@ -542,7 +542,7 @@ function initTrafficModule(){
     });
 
     applicationsData = [{
-        id: "1", name: "Maintenance Data Transmission", source: "BIIF-1", dest: "BIIF-2", protocol: "TCP",
+        id: "1", name: "Maintenance Data Transmission", source: "MS Cape Canaveral", dest: "BIIF-2", protocol: "TCP",
         tm: "TM1", startOffset: "23", endOffset: "540"
     },{
         id: "2", name: "Weather Image", source: "BIIF-1", dest: "BIIF-7", protocol: "TCP",
@@ -551,7 +551,7 @@ function initTrafficModule(){
         id: "3", name: "Aircraft Screen Image or Video", source: "BIIF-3", dest: "BIIF-9", protocol: "TCP",
         tm: "TM1", startOffset: "1823", endOffset: "2540"
     },{
-        id: "4", name: "Mission Support Data Transmission", source: "BIIF-1", dest: "BIIF-2", protocol: "TCP",
+        id: "4", name: "Mission Support Data Transmission", source: "BIIF-1", dest: "Ascension Island", protocol: "TCP",
         tm: "TM1", startOffset: "323", endOffset: "1040"
     }];
 
