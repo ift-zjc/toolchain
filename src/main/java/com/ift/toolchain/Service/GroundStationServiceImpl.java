@@ -22,4 +22,14 @@ public class GroundStationServiceImpl implements GroundStationService {
     public List<GroundStation> getAll() {
         return groundStationRepository.findAll();
     }
+
+    @Override
+    public GroundStation findById(String id) {
+        return groundStationRepository.getOne(id);
+    }
+
+    @Override
+    public GroundStation findByName(String name) {
+        return groundStationRepository.findByName(name);
+    }
 }

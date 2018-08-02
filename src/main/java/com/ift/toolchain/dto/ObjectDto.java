@@ -10,4 +10,6 @@ public class ObjectDto {
     private String id;
     private String name;
     private String category;
+
+    public ObjectDto(){}
 }

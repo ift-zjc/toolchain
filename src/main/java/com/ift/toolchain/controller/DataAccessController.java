@@ -73,6 +73,10 @@ public class DataAccessController {
     }
 
 
+    /**
+     * Get object list
+     * @return
+     */
     @GetMapping(value = "/objectlist", produces = "application/json")
     public List<ObjectDto> getAllObjects(){
         List<ObjectDto> objectDtos = new ArrayList<>();
@@ -91,5 +95,23 @@ public class DataAccessController {
 
 
         return objectDtos;
+    }
+
+
+    @PostMapping(value = "/object/{key}")
+    @ResponseBody
+    public ObjectDto getObjectById(@PathVariable String key){
+
+        ObjectDto objectDto;
+        // Try to find satellite
+        Satellite satellite = satelliteService.findByName(key);
+        if(satellite != null){
+            objectDto = new ObjectDto(satellite.getId(), satellite.getName(), "Satellite");
+        }else{
+            GroundStation groundStation = groundStationService.findByName(key);
+            objectDto = new ObjectDto(groundStation.getId(), groundStation.getName(), "Ground station");
+        }
+
+        return objectDto;
     }
 }

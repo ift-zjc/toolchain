@@ -489,7 +489,13 @@ $(function(){
            },
 
             byKey: function(key){
+                var d = new $.Deferred();
+                $.post("api/object/" + key)
+                    .done(function(result){
+                        d.resolve(result)
+                    });
 
+                return d.promise();
             }
        });
 
@@ -608,7 +614,7 @@ function initTrafficModule(){
                     validationRules: [{type: "required"}],
                     lookup: {
                         dataSource: dsObjects,
-                        valueExpr: "id",
+                        valueExpr: "name",
                         grouped: true,
                         displayExpr: "name"
                     }
@@ -619,7 +625,7 @@ function initTrafficModule(){
                     validationRules: [{type: "required"}],
                     lookup: {
                         dataSource: dsObjects,
-                        valueExpr: "id",
+                        valueExpr: "name",
                         grouped: true,
                         displayExpr: "name"
                     }

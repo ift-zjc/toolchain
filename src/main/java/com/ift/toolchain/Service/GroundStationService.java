@@ -7,4 +7,6 @@ import java.util.List;
 public interface GroundStationService {
     public GroundStation save(GroundStation groundStation);
     public List<GroundStation> getAll();
+    public GroundStation findById(String id);
+    public GroundStation findByName(String name);
 }

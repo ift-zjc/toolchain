@@ -10,6 +10,7 @@ public interface SatelliteService {
     public Satellite save(Satellite satellite);
     public Satellite save(Orbit orbit, String satelliteName, int satOrder);
 
+    public Satellite findById(String id);
     public Satellite findByName(String satelliteName);
     public List<Satellite> getSatelliesOnSameOrb(String satelliteName);
     public Satellite updateSatellite(String satelliteName, String satelliteId);

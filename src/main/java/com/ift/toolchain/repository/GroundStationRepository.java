@@ -6,4 +6,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface GroundStationRepository extends JpaRepository<GroundStation, String> {
+
+    public GroundStation findByName(String name);
 }
