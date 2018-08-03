@@ -127,7 +127,16 @@ $(function(){
         type: "datetime",
         min: viewer.clock.startTime,
         max: viewer.clock.stopTime,
-        dateSerializationFormat: "yyyy-MM-ddTHH:mm:ssZ"
+        dateSerializationFormat: "yyyy-MM-ddTHH:mm:ssZ",
+        onValueChanged: function (e) {
+            var currentValue = e.value;
+
+            // Adjust simulatorEnd settings
+            simulatorEnd.option('min', currentValue);
+            if(Date.parse(simulatorEnd.option('value')) < Date.parse(currentValue)){
+                simulatorEnd.option('value', currentValue);
+            }
+        }
     }).dxDateBox("instance");
 
     simulatorEnd = $("#dtSimulateEnd").dxDateBox({
@@ -190,6 +199,11 @@ $(function(){
             // }
 
             // var simulatorWindow = window.open("/simulate", '_blank');
+
+            if(! (simulatorStart.option("isValid") && simulatorEnd.option("isValid"))){
+                console.log("Wrong date picked ...");
+                return;
+            }
 
             $("#popupSimulating").dxPopup("instance").show();
 
