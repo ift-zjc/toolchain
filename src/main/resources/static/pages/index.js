@@ -590,9 +590,9 @@ function initTrafficModule(){
         id: "1", name: "Maintenance Data Transmission", source: "MS Cape Canaveral", dest: "BIIF-2", protocol: "TCP",
         tm: {
             code: "TM1",
-            timeinterval: 1000,
+            time: 1000,
             timeintervaldelta: 370,
-            datavolume: 2000,
+            datavolume: 4000,
             datavolumedelta: 200
         }, startOffset: "23", endOffset: "600"
     },{
@@ -600,14 +600,14 @@ function initTrafficModule(){
         tm: {
             code: "TM2",
             time: 1060,
-            datavolume: 2000
+            datavolume: 4000
         }, startOffset: "700", endOffset: "1300"
     },{
         id: "3", name: "Aircraft Screen Image or Video", source: "BIIF-3", dest: "BIIF-9", protocol: "TCP",
         tm: {
             code: "TM3",
             timeinterval: 10,
-            datavolume: 2000
+            datavolume: 4000
         }, startOffset: "1400", endOffset: "2000"
     },{
         id: "4", name: "Mission Support Data Transmission", source: "BIIF-1", dest: "Ascension Island", protocol: "TCP",

@@ -121,12 +121,12 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
 
         TrafficModelConfig trafficModelConfig = new TrafficModelConfig();
         trafficModelConfig.setName("time");
-        trafficModelConfig.setValue("0");
+        trafficModelConfig.setValue("10");
         trafficModelConfig.setTrafficModel(trafficModel);
         trafficModelConfigService.save(trafficModelConfig);
         trafficModelConfig = new TrafficModelConfig();
         trafficModelConfig.setName("datavolume");
-        trafficModelConfig.setValue("0");
+        trafficModelConfig.setValue("4000");
         trafficModelConfig.setTrafficModel(trafficModel);
         trafficModelConfigService.save(trafficModelConfig);
 
