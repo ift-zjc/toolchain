@@ -844,10 +844,13 @@ function initTrafficModule(){
             if (e.parentType == 'dataRow') {
                 editors[e.name] = e.editorElement[e.editorElement.data().dxComponents[0]]('instance');
             }
+            tmObject = undefined;
         },
         onRowUpdated: function(e) {
             editors = {};
-            editingRow.tm = tmObject;
+            if(!_.isUndefined(tmObject)) {
+                editingRow.tm = tmObject;
+            }
         },
         onRowInserted: function(e) {
             editors = {};
