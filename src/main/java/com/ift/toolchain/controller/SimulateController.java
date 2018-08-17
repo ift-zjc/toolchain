@@ -32,22 +32,10 @@ public class SimulateController {
     @Autowired
     TrafficeModelGenericService trafficModelGenericService;
 
-    @Autowired
-    FcmClient fcmClient;
 
     @PostMapping(value = "/simulate", consumes = "application/json")
     public SimulateData simulate(@RequestBody Map<String, Object> payload){
 
-        Map<String, String> data = new HashMap<>();
-        data.put("progration", String.valueOf(0.00));
-
-        try {
-            fcmClient.send(data);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-        }
 
         List<String> dataStr = new ArrayList<>();
         int startOffset = (int) Float.parseFloat(payload.get("offsetStart").toString());
