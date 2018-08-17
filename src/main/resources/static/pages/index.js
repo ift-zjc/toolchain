@@ -37,8 +37,6 @@ var trafficModelData;
 
 $(function(){
 
-    initFirebase();
-
     initComponents();
     orbIndex = ['A','B','C','D','E','F'];
 
