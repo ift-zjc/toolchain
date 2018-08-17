@@ -1,17 +1,19 @@
 package com.ift.toolchain.controller;
 
 
-import com.ift.toolchain.Service.MessageHubService;
-import com.ift.toolchain.Service.StorageService;
+import com.ift.toolchain.Service.*;
 import com.ift.toolchain.dto.*;
 import com.ift.toolchain.model.Satellite;
+import com.ift.toolchain.model.TrafficModel;
 import com.ift.toolchain.util.CommonUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
@@ -27,15 +29,32 @@ public class SimulateController {
     MessageHubService messageHubService;
     @Autowired
     StorageService storageService;
+    @Autowired
+    TrafficeModelGenericService trafficModelGenericService;
+
+    @Autowired
+    FcmClient fcmClient;
 
     @PostMapping(value = "/simulate", consumes = "application/json")
     public SimulateData simulate(@RequestBody Map<String, Object> payload){
+
+        Map<String, String> data = new HashMap<>();
+        data.put("progration", String.valueOf(0.00));
+
+        try {
+            fcmClient.send(data);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+
         List<String> dataStr = new ArrayList<>();
         int startOffset = (int) Float.parseFloat(payload.get("offsetStart").toString());
         int endOffset = (int) Float.parseFloat(payload.get("offsetEnd").toString());
         int delta = (int) Float.parseFloat(payload.get("delta").toString()) * 60;   // Minute
         delta = delta == 0 ? 60 : delta;
-        List<HashMap<String, String>> applicationDtos = (List<HashMap<String, String>>) payload.get("appData");
+        List<HashMap<String, Object>> applicationDtos = (List<HashMap<String, Object>>) payload.get("appData");
 
         List<SimulateResultDto> simulateResultDtos = new ArrayList<>();
 
@@ -149,25 +168,33 @@ public class SimulateController {
 
 
 
-        for(HashMap<String, String> hashMap : applicationDtos){
-            long so = Long.parseLong(hashMap.get("startOffset"));
-            long eo = Long.parseLong(hashMap.get("endOffset"));
+        for(HashMap<String, Object> hashMap : applicationDtos){
+            long so = Long.parseLong(hashMap.get("startOffset").toString());
+            long eo = Long.parseLong(hashMap.get("endOffset").toString());
             ApplicationTraffic applicationTraffic = new ApplicationTraffic();
-            applicationTraffic.setAppName(hashMap.get("name"));
+            applicationTraffic.setAppName(hashMap.get("name").toString());
 
-            List<ApplicationTrafficData> applicationTrafficDataList = new ArrayList<>();
-            for(long j = so; j <= eo;  j += 10) {
-                float dataVolumn = 0f;
-                // Get data volumn for this particular time based on different traffic model.
-                dataVolumn = (float) (Math.random() * 1025);
-
-                ApplicationTrafficData applicationTrafficData = new ApplicationTrafficData();
-                applicationTrafficData.setOffsetMillionSecond(j);
-                applicationTrafficData.setTrafficVolumn(dataVolumn);
-
-                applicationTrafficDataList.add(applicationTrafficData);
+            // Get traffic model for this application.
+            HashMap<String, String> tmData =  (HashMap<String, String>)hashMap.get("tm");
+            String tmCode = tmData.get("code");
+            // Find traffic model
+            Optional<TrafficModel> trafficModel = trafficModelGenericService.getByCode(tmCode);
+            // Skip to next application if this application's traffic model is not presented.
+            if(!trafficModel.isPresent()){
+                continue;
             }
 
+            TrafficModel trafficModelExtracted = trafficModel.get();
+            // Loop traffic model attributes and update if necessary
+            trafficModelExtracted.getTrafficModelConfigs().stream().forEach(tmConfig -> {
+                if(tmData.containsKey(tmConfig.getName())){
+                    tmConfig.setValue(String.valueOf(tmData.get(tmConfig.getName())));
+                }
+            });
+
+            TrafficeModelService trafficeModelService = this.getTrafficModelService(tmCode);
+
+            List<ApplicationTrafficData> applicationTrafficDataList = trafficeModelService.simulate(so, eo, trafficModelExtracted.getTrafficModelConfigs());
             applicationTraffic.setApplicationTrafficDataList(applicationTrafficDataList);
             applicationTraffics.add(applicationTraffic);
         }
@@ -289,5 +316,51 @@ public class SimulateController {
 
 //        return (Math.abs(angleCurrent - angleSecondAgo));
         return Math.abs(a2-a2SecondAgo);
+    }
+
+
+    @Qualifier("oneTimeDataTransmissionTrafficModel")
+    @Autowired
+    TrafficeModelService oneTimeDataTrasmissionTrafficeModel;
+
+    @Qualifier("staticPeriodicalDataTramsmission")
+    @Autowired
+    TrafficeModelService staticPeriodicalDataTramsmissionTrafficModel;
+
+    @Qualifier("regularRandomDataTransmission")
+    @Autowired
+    TrafficeModelService regularRandomDataTransmissionTrafficModel;
+
+    @Qualifier("smallDataShortIntervalTransmission")
+    @Autowired
+    TrafficeModelService smallDataShortIntervalTransmissionTrafficModel;
+
+    @Qualifier("smallDataRegularIntervalTransmission")
+    @Autowired
+    TrafficeModelService smallDataRegularIntervalTransmission;
+
+    private TrafficeModelService getTrafficModelService(String trafficModelCode){
+
+        if(trafficModelCode.equalsIgnoreCase("TM1")) {
+            return oneTimeDataTrasmissionTrafficeModel;
+        }
+
+        if(trafficModelCode.equalsIgnoreCase("TM2")) {
+            return staticPeriodicalDataTramsmissionTrafficModel;
+        }
+
+        if(trafficModelCode.equalsIgnoreCase("TM3")){
+            return regularRandomDataTransmissionTrafficModel;
+        }
+
+        if(trafficModelCode.equalsIgnoreCase("TM4")) {
+            return smallDataShortIntervalTransmissionTrafficModel;
+        }
+
+        if(trafficModelCode.equalsIgnoreCase("TM5")) {
+            return smallDataRegularIntervalTransmission;
+        }
+
+        return null;
     }
 }

@@ -1,20 +1,15 @@
 package com.ift.toolchain.controller;
 
 import com.ift.toolchain.Service.*;
-import com.ift.toolchain.dto.DataGridTM;
-import com.ift.toolchain.dto.ObjectDto;
-import com.ift.toolchain.dto.ObjectEvent;
-import com.ift.toolchain.dto.TrafficeModelDto;
-import com.ift.toolchain.model.GroundStation;
-import com.ift.toolchain.model.MessageHub;
-import com.ift.toolchain.model.Satellite;
-import com.ift.toolchain.model.TrafficModel;
+import com.ift.toolchain.dto.*;
+import com.ift.toolchain.model.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * API controller
@@ -49,7 +44,7 @@ public class DataAccessController {
      */
     @PostMapping(value = "/tmlist", produces = "application/json")
     @ResponseBody
-    public DataGridTM getTrafficeModelDataSource(){
+    public String getTrafficeModelDataSource(){
         return trafficeModelGenericService.getTMList();
     }
 
@@ -59,17 +54,31 @@ public class DataAccessController {
      * @param key
      * @return
      */
-    @PostMapping(value = "/tm/{key}")
+    @PostMapping(value = "/tm/{key}", produces = "application/json")
     @ResponseBody
-    public TrafficeModelDto getTrafficModelByKey(@PathVariable String key){
-        TrafficModel trafficModel =  trafficeModelGenericService.getByCode(key);
-        TrafficeModelDto trafficeModelDto = new TrafficeModelDto();
-        trafficeModelDto.setTmId(trafficModel.getId());
-        trafficeModelDto.setTmName(trafficModel.getName());
-        trafficeModelDto.setTmCode(trafficModel.getCode());
-        trafficeModelDto.setTmDesc(trafficModel.getDescription());
+    public String getTrafficModelByKey(@PathVariable String key){
+        Optional<TrafficModel> trafficModel =  trafficeModelGenericService.getByCode(key);
 
-        return trafficeModelDto;
+        // Json String
+        String response = "{";
+        if(trafficModel.isPresent()){
+            TrafficModel model = trafficModel.get();
+            response += "\"name\":\"" + model.getName() + "\",";
+            response += "\"code\":\"" + model.getCode() + "\",";
+            response += "\"desc\":\"" + model.getDescription() + "\",";
+
+            // Get configuration
+            List<TrafficModelConfig> trafficModelConfigs = model.getTrafficModelConfigs();
+            for(TrafficModelConfig config : trafficModelConfigs){
+                response += "\"" + config.getName() + "\": \"" + config.getValue() + "\",";
+            }
+        }
+
+        response = response.substring(0, response.length()-1);
+
+        response += "}";
+
+        return response;
     }
 
 

@@ -3,12 +3,14 @@ package com.ift.toolchain.model;
 import lombok.Data;
 import org.hibernate.annotations.GenericGenerator;
 
-import javax.persistence.*;
-import java.util.List;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.ManyToOne;
 
 @Entity
 @Data
-public class TrafficModel {
+public class TrafficModelConfig {
 
     @Id
     @GeneratedValue(generator = "system-uuid")
@@ -16,14 +18,8 @@ public class TrafficModel {
     private String id;
 
     private String name;
+    private String value;
 
-    @Column(unique = true)
-    private String code;
-
-    private String description;
-
-
-    @OneToMany(mappedBy = "trafficModel")
-    List<TrafficModelConfig> trafficModelConfigs;
-
+    @ManyToOne
+    TrafficModel trafficModel;
 }

@@ -2,6 +2,8 @@
 server:
   port: 80
 
+fcm:
+  service-account-file: C:\\Users\\zhijiang\\Documents\\Projects\\toolchain\\ift-demo-20180724-firebase-adminsdk-g7o1b-afa0269793.json
 spring:
   datasource:
     url: jdbc:mysql://localhost:3306/toolchain?useSSL=false
@@ -20,3 +22,8 @@ zjc:
     topic: test-topic-1
     consumer:
       group-id: test-consumer-group
+
+data:
+  file:
+    orb:
+      basedir: C:\\Users\\zhijiang\\Documents\\Projects\\toolchain\\Crosslink Scenario Data\\

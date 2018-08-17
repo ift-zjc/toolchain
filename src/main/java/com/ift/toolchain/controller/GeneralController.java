@@ -1,6 +1,7 @@
 package com.ift.toolchain.controller;
 
 import com.ift.toolchain.component.PdfGeneratorUtil;
+import com.ift.toolchain.settings.FileSettings;
 import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -22,6 +23,8 @@ public class GeneralController {
 
     @Autowired
     PdfGeneratorUtil pdfGeneratorUtil;
+    @Autowired
+    FileSettings fileSettings;
 
     @GetMapping(value = "/")
     public String index(){
@@ -33,6 +36,7 @@ public class GeneralController {
 //            e.printStackTrace();
 //        }
 
+        System.out.println("====================" + fileSettings.getBasedir());
         return "index";
     }
 

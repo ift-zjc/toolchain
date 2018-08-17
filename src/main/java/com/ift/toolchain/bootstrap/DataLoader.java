@@ -1,9 +1,8 @@
 package com.ift.toolchain.bootstrap;
 
-import com.ift.toolchain.Service.DataInitService;
-import com.ift.toolchain.Service.OrbitService;
-import com.ift.toolchain.Service.TrafficeModelService;
+import com.ift.toolchain.Service.*;
 import com.ift.toolchain.model.TrafficModel;
+import com.ift.toolchain.model.TrafficModelConfig;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -30,9 +29,11 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
     @Autowired
     DataInitService dataInitService;
 
-    @Qualifier("rdtTrafficModelService")
     @Autowired
-    TrafficeModelService rdtTrafficeModelService;
+    TrafficeModelGenericService trafficeModelGenericService;
+
+    @Autowired
+    TrafficModelConfigService trafficModelConfigService;
 
     @Override
     public void onApplicationEvent(ContextRefreshedEvent contextRefreshedEvent) {
@@ -114,9 +115,110 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
         // Traffice model
         TrafficModel trafficModel = new TrafficModel();
         trafficModel.setCode("TM1");
-        trafficModel.setName("Random Traffic Model 1");
-        trafficModel.setDescription("Testing traffice model");
-        rdtTrafficeModelService.create(trafficModel);
+        trafficModel.setName("One time data transmission");
+        trafficModel.setDescription("Transmit a given amount of data at a given time");
+        trafficModel  = trafficeModelGenericService.save(trafficModel);
+
+        TrafficModelConfig trafficModelConfig = new TrafficModelConfig();
+        trafficModelConfig.setName("time");
+        trafficModelConfig.setValue("0");
+        trafficModelConfig.setTrafficModel(trafficModel);
+        trafficModelConfigService.save(trafficModelConfig);
+        trafficModelConfig = new TrafficModelConfig();
+        trafficModelConfig.setName("datavolume");
+        trafficModelConfig.setValue("0");
+        trafficModelConfig.setTrafficModel(trafficModel);
+        trafficModelConfigService.save(trafficModelConfig);
+
+        // Static periodical data transmission
+        trafficModel = new TrafficModel();
+        trafficModel.setCode("TM2");
+        trafficModel.setName("Static periodical data transmission");
+        trafficModel.setDescription("Periodically transmit a fixed amount of data with fixed time interval");
+        trafficModel  = trafficeModelGenericService.save(trafficModel);
+        // Configuration
+        trafficModelConfig = new TrafficModelConfig();
+        trafficModelConfig.setName("timeinterval");
+        trafficModelConfig.setValue("10");
+        trafficModelConfig.setTrafficModel(trafficModel);
+        trafficModelConfigService.save(trafficModelConfig);
+        trafficModelConfig = new TrafficModelConfig();
+        trafficModelConfig.setName("datavolume");
+        trafficModelConfig.setValue("100");
+        trafficModelConfig.setTrafficModel(trafficModel);
+        trafficModelConfigService.save(trafficModelConfig);
+
+        // Regular random data transmission
+        trafficModel = new TrafficModel();
+        trafficModel.setCode("TM3");
+        trafficModel.setName("Regular random data transmission");
+        trafficModel.setDescription("Multiple data transmission with random data volume and interval.");
+        trafficModel  = trafficeModelGenericService.save(trafficModel);
+        // Configuration
+        trafficModelConfig = new TrafficModelConfig();
+        trafficModelConfig.setName("timeinterval");
+        trafficModelConfig.setValue("10");
+        trafficModelConfig.setTrafficModel(trafficModel);
+        trafficModelConfigService.save(trafficModelConfig);
+        trafficModelConfig = new TrafficModelConfig();
+        trafficModelConfig.setName("timeintervaldelta");
+        trafficModelConfig.setValue("3");
+        trafficModelConfig.setTrafficModel(trafficModel);
+        trafficModelConfigService.save(trafficModelConfig);
+        trafficModelConfig = new TrafficModelConfig();
+        trafficModelConfig.setName("datavolume");
+        trafficModelConfig.setValue("100");
+        trafficModelConfig.setTrafficModel(trafficModel);
+        trafficModelConfigService.save(trafficModelConfig);
+        trafficModelConfig = new TrafficModelConfig();
+        trafficModelConfig.setName("datavolumedelta");
+        trafficModelConfig.setValue("30");
+        trafficModelConfig.setTrafficModel(trafficModel);
+        trafficModelConfigService.save(trafficModelConfig);
+
+        // Small data short interval transmission
+        trafficModel = new TrafficModel();
+        trafficModel.setCode("TM4");
+        trafficModel.setName("Small data short interval transmission");
+        trafficModel.setDescription("Continuous transmission with small data volume in each transmission and short interval between transmissions. Both data volume and time interval are random.");
+        trafficModel  = trafficeModelGenericService.save(trafficModel);
+        // Configuration
+        trafficModelConfig = new TrafficModelConfig();
+        trafficModelConfig.setName("timeinterval");
+        trafficModelConfig.setValue("10");
+        trafficModelConfig.setTrafficModel(trafficModel);
+        trafficModelConfigService.save(trafficModelConfig);
+        trafficModelConfig = new TrafficModelConfig();
+        trafficModelConfig.setName("datavolume");
+        trafficModelConfig.setValue("100");
+        trafficModelConfig.setTrafficModel(trafficModel);
+        trafficModelConfigService.save(trafficModelConfig);
+
+        // Small data regular interval transmission
+        trafficModel = new TrafficModel();
+        trafficModel.setCode("TM5");
+        trafficModel.setName("Small data regular interval transmission");
+        trafficModel.setDescription("Multiple data transmissions with small data volume in each transmission. Both data volume and time interval are random.");
+        trafficModel  = trafficeModelGenericService.save(trafficModel);
+        // Configuration
+        trafficModelConfig = new TrafficModelConfig();
+        trafficModelConfig.setName("timeinterval");
+        trafficModelConfig.setValue("10");
+        trafficModelConfig.setTrafficModel(trafficModel);
+        trafficModelConfigService.save(trafficModelConfig);
+        trafficModelConfig = new TrafficModelConfig();
+        trafficModelConfig.setName("timeintervaldelta");
+        trafficModelConfig.setValue("3");
+        trafficModelConfig.setTrafficModel(trafficModel);
+        trafficModelConfigService.save(trafficModelConfig);
+        trafficModelConfig = new TrafficModelConfig();
+        trafficModelConfig.setName("datavolume");
+        trafficModelConfig.setValue("100");
+        trafficModelConfig.setTrafficModel(trafficModel);
+        trafficModelConfigService.save(trafficModelConfig);
+
+
+
 
     }
 }

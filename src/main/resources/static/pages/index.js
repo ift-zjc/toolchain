@@ -37,6 +37,8 @@ var trafficModelData;
 
 $(function(){
 
+    initFirebase();
+
     initComponents();
     orbIndex = ['A','B','C','D','E','F'];
 
@@ -517,12 +519,43 @@ $(function(){
 
 });
 
+var messaging;
+async function initFirebase(){
+
+    const registration = await navigator.serviceWorker.register("/Workers/firebase-messaging-sw.js");
+
+    // Initialize Firebase
+    var config = {
+        apiKey: "AIzaSyBw3VVc0dUO_hydYZ2My8XTxjsN0leQwio",
+        authDomain: "ift-demo-20180724.firebaseapp.com",
+        databaseURL: "https://ift-demo-20180724.firebaseio.com",
+        projectId: "ift-demo-20180724",
+        storageBucket: "ift-demo-20180724.appspot.com",
+        messagingSenderId: "361001276618"
+    };
+    firebase.initializeApp(config);
+    const messaging = firebase.messaging();
+    messaging.useServiceWorker(registration);
+
+    console.log("Token: ", messaging.getToken());
+
+    messaging.onMessage(function (payload){
+        console.log('Message received. ' + payload);
+    })
+
+}
+
 var applicationsData;
 var dgApplications;
 var dsApplications;
 var protocols = [{name: "TCP", value: "TCP"}, {name: "UDP", value: "UDP"}];
 var tmDatasource;
 var chartApplications;
+var editors = {};
+var editingRow;
+var selectedTMCode;   // Selected Traffic Model Code;
+var popTMAttributes;
+var tmObject;           // Store updated/new TM data.
 function initTrafficModule(){
 
     tmDatasource = new DevExpress.data.CustomStore({
@@ -533,10 +566,10 @@ function initTrafficModule(){
                 url: "/api/tmlist",
                 type: "POST",
                 success: function(result){
-                    deferred.resolve(result.items, {totalCount: result.totalCount});
+                    deferred.resolve(result, {totalCount: result.length});
                 },
                 error: function(){
-                    deferred.reject("TrafficeModel Loading Error");
+                    deferred.reject("Traffic Model Loading Error");
                 },
                 timeout: 5000
             });
@@ -557,16 +590,45 @@ function initTrafficModule(){
 
     applicationsData = [{
         id: "1", name: "Maintenance Data Transmission", source: "MS Cape Canaveral", dest: "BIIF-2", protocol: "TCP",
-        tm: "TM1", startOffset: "23", endOffset: "540"
+        tm: {
+            code: "TM1",
+            timeinterval: 1000,
+            timeintervaldelta: 370,
+            datavolume: 2000,
+            datavolumedelta: 200
+        }, startOffset: "23", endOffset: "600"
     },{
         id: "2", name: "Weather Image", source: "BIIF-1", dest: "BIIF-7", protocol: "TCP",
-        tm: "TM1", startOffset: "800", endOffset: "1540"
+        tm: {
+            code: "TM2",
+            time: 1060,
+            datavolume: 2000
+        }, startOffset: "700", endOffset: "1300"
     },{
         id: "3", name: "Aircraft Screen Image or Video", source: "BIIF-3", dest: "BIIF-9", protocol: "TCP",
-        tm: "TM1", startOffset: "1823", endOffset: "2540"
+        tm: {
+            code: "TM3",
+            timeinterval: 10,
+            datavolume: 2000
+        }, startOffset: "1400", endOffset: "2000"
     },{
         id: "4", name: "Mission Support Data Transmission", source: "BIIF-1", dest: "Ascension Island", protocol: "TCP",
-        tm: "TM1", startOffset: "323", endOffset: "1040"
+        tm: {
+            code: "TM4",
+            timeinterval: 100,
+            timeintervaldelta: 70,
+            datavolume: 2000,
+            datavolumedelta: 500
+        }, startOffset: "2100", endOffset: "2700"
+    },{
+        id: "5", name: "Red track - Air", source: "Hawaii", dest: "BIIF-3", protocol: "TCP",
+        tm: {
+            code: "TM5",
+            timeinterval: 100,
+            timeintervaldelta: 70,
+            datavolume: 2000,
+            datavolumedelta: 300
+        }, startOffset: "2800", endOffset: "3400"
     }];
 
     dsApplications = new DevExpress.data.DataSource({
@@ -578,10 +640,21 @@ function initTrafficModule(){
         }
     });
 
+    popTMAttributes = $("#formTrafficModelPopup").dxPopup({
+        title: 'Traffic Model Attributes',
+        visible: false,
+        height: "auto",
+        width: "auto",
+        deferRendering: false,
+        onHiding: function ( e ){
 
+            // Save to TM data object
+            tmObject = $('#formTrafficModel').dxForm({}).dxForm('instance').option('formData');
+            editors.tmCode.option('selectedItem', tmObject);
+        }
+    }).dxPopup('instance');
 
-
-    // Initial datagrid
+    // Initial data grid
     dgApplications = $('#dgApps').dxDataGrid({
         dataSource: dsApplications,
         noDataText: "No application data ...",
@@ -600,7 +673,7 @@ function initTrafficModule(){
                 items: [
                     {itemType: "group",
                     caption: "Application Information",
-                    items: ["name", "tm"]
+                    items: ["name", "tm.code", "btnAdjust"]
                     },
                     {
                     itemType: "group",
@@ -618,10 +691,14 @@ function initTrafficModule(){
         searchPanel: {
             visible: true
         },
-        columns: ["name", {
+        columns: [{
+            name: "name",
+            dataField: "name"
+        }, {
             caption: "Source & Destination",
             columns: [
                 {
+                    name: "source",
                     dataField: "source",
                     caption: "Source",
                     dataType: "String",
@@ -633,6 +710,7 @@ function initTrafficModule(){
                         displayExpr: "name"
                     }
                 }, {
+                    name: "dest",
                     dataField: "dest",
                     caption: "Destination",
                     dataType: "String",
@@ -646,6 +724,7 @@ function initTrafficModule(){
                 }
             ]
         },{
+            name: "protocol",
             dataField: "protocol",
             caption: "Protocol",
             dataType: "String",
@@ -656,13 +735,14 @@ function initTrafficModule(){
                 displayExpr: "name"
             }
         }, {
-            dataField: "tm",
+            name: "tmCode",
+            dataField: "tm.code",
             caption: "Traffic Model",
             dataType: "String",
             lookup: {
                 dataSource: tmDatasource,
-                valueExpr: "tmCode",
-                displayExpr: "tmName"
+                valueExpr: "code",
+                displayExpr: "name"
             }
         },{
             caption: "Time Range",
@@ -682,21 +762,97 @@ function initTrafficModule(){
                 visible: false
             }
         },{
+            name: "btnAdjust",
+            dataField: "btnAdjust",
+            caption: "Adjust",
+            visible: false,
+            editCellTemplate: function(cellElement, cellInfo){
+                $('<div />').dxButton({
+                    text: "Config Traffic Model",
+                    elementAttr: {
+                        id: "btnAdjust"
+                    },
+                    onClick: function (e) {
+                        // if(_.isUndefined(selectedTMCode) || selectedTMCode == editingRow.tm.code) {
+                        var formData;
+
+                        selectedTMItem = editors.tmCode.option("selectedItem");
+
+                        if (!_.isUndefined(tmObject) && selectedTMItem.code == tmObject.code){
+                            formData = tmObject;
+                        }else{
+                            formData = selectedTMItem;
+                        }
+                            // Create form
+                            $('#formTrafficModel').dxForm({
+                                formData: formData,
+                                customizeItem: function(item){
+                                    if (item.dataField === "name" || item.dataField === "code" || item.dataField === "desc"){
+                                        item.editorOptions = {
+                                            disabled: true
+                                        };
+                                    }
+                                }
+                            });
+                        // }
+
+                        popTMAttributes.show();
+                    }
+                }).appendTo(cellElement);
+            }
+        },{
+                name: "startOffset",
                 dataField: "startOffset",
                 caption: "Start Offset",
                 dataType: "number",
                 visible: false
             },
             {
+                name: "endOffset",
                 dataField: "endOffset",
                 caption: "End Offset",
                 dataType: "number",
                 visible: false
         }],
+        onEditingStart: function (e) {
+            editingRow = e.data;
+        },
         onRowPrepared: function (info){
             if(info.rowType == "data"){
                 info.rowElement.removeClass("dx-row-alt").addClass("bg-dark text-white");
             }
+        },
+        // onEditorPreparing: function (e) {
+        //     var component = e.component,
+        //         rowIndex = e.row && e.row.rowIndex;
+        //     if(e.dataField === "id"){
+        //         var onClick = e.editorOptions.onClick;
+        //         e.editorOptions.OnClick = function (e) {
+        //
+        //         }
+        //     }
+        // }
+        onEditorPrepared: function( e ){
+            // var tmSelectBox;
+            // if(e.parentType == 'dataRow' && e.dataField == "tm.code"){
+            //     e.editorElement.dxSelectBox('instance').option('onValueChanged', function (e) {
+            //         selectedTMCode = e.value;
+            //         // Set data to popup form fields
+            //         $('#formTrafficModel').dxForm({
+            //             formData: e.component.option('selectedItem')
+            //         });
+            //     });
+            // }
+            if (e.parentType == 'dataRow') {
+                editors[e.name] = e.editorElement[e.editorElement.data().dxComponents[0]]('instance');
+            }
+        },
+        onRowUpdated: function(e) {
+            editors = {};
+            editingRow.tm = tmObject;
+        },
+        onRowInserted: function(e) {
+            editors = {};
         }
     }).dxDataGrid("instance");
 
