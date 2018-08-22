@@ -36,8 +36,8 @@ public class GeneralController {
 //            e.printStackTrace();
 //        }
 
-        System.out.println("====================" + fileSettings.getBasedir());
-        return "index";
+//        System.out.println("====================" + fileSettings.getBasedir());
+        return "dashboard";
     }
 
 

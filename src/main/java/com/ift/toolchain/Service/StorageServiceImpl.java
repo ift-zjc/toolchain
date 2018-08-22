@@ -1,7 +1,6 @@
 package com.ift.toolchain.Service;
 
-import com.ift.toolchain.dto.SatelliteCollection;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
@@ -21,13 +20,17 @@ import java.util.stream.Stream;
 
 @Service
 public class StorageServiceImpl implements StorageService {
+
+    @Value("${file.upload.basedir}")
+    private String uploadDir;
+
     private final Path rootLocation;
 
-    @Autowired
     public StorageServiceImpl() {
-//        this.rootLocation = Paths.get("C:","upload-dir", "satellite-data.txt");
-        this.rootLocation = Paths.get("/home/cloud_ift/upload-dir", "satellite-data.txt");
+        this.rootLocation = Paths.get("c:\\upload-dir\\").toAbsolutePath().normalize();
+//        this.rootLocation = Paths.get("/home/cloud_ift/upload-dir", "satellite-data.txt");
     }
+
 
     @Override
     public void store(MultipartFile file) {

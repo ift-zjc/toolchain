@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
-@Component
+//@Component
 public class KafkaConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaConsumer.class);

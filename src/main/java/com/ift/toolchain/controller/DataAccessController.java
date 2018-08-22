@@ -5,9 +5,14 @@ import com.ift.toolchain.dto.*;
 import com.ift.toolchain.model.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.SendTo;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -112,6 +117,7 @@ public class DataAccessController {
     public ObjectDto getObjectById(@PathVariable String key){
 
         ObjectDto objectDto;
+
         // Try to find satellite
         Satellite satellite = satelliteService.findByName(key);
         if(satellite != null){
@@ -122,5 +128,28 @@ public class DataAccessController {
         }
 
         return objectDto;
+    }
+
+
+    @Autowired
+    StorageService storageService;
+    @PostMapping("/file/upload")
+    public void handleFileUpload(@RequestParam("files[]") MultipartFile[] files){
+        // Save to storage
+        Arrays.stream(files).forEach(file -> storageService.store(file));
+    }
+
+
+    @Autowired
+    SimpMessagingTemplate webSocket;
+
+    @PostMapping("/simulation/start")
+    public void simulate() throws Exception{
+
+        webSocket.convertAndSend("/topic/simulation/start", new SimulationMessage("Start reading TLE data ...", 1.0f));
+        Thread.sleep(5000);
+        webSocket.convertAndSend("/topic/simulation/start", new SimulationMessage("TLE data acquired ...", 30.0f));
+        Thread.sleep(5000);
+        webSocket.convertAndSend("/topic/simulation/start", new SimulationMessage("TLE data acquired ...", 100.0f));
     }
 }

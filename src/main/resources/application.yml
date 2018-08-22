@@ -27,3 +27,8 @@ data:
   file:
     orb:
       basedir: C:\\Users\\zhijiang\\Documents\\Projects\\toolchain\\Crosslink Scenario Data\\
+
+
+file:
+  upload:
+    basedir: C:\\upload-dir
