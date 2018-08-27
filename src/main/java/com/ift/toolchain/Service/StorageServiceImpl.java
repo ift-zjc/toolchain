@@ -1,5 +1,7 @@
 package com.ift.toolchain.Service;
 
+import com.ift.toolchain.model.ConfigFile;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -16,6 +18,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 @Service
@@ -23,6 +26,9 @@ public class StorageServiceImpl implements StorageService {
 
     @Value("${file.upload.basedir}")
     private String uploadDir;
+
+    @Autowired
+    private ConfigFileService configFileService;
 
     private final Path rootLocation;
 
@@ -35,6 +41,7 @@ public class StorageServiceImpl implements StorageService {
     @Override
     public void store(MultipartFile file) {
         String filename = StringUtils.cleanPath(file.getOriginalFilename());
+        filename = UUID.randomUUID().toString().concat("_").concat(filename);
         try {
             if (file.isEmpty()) {
                 throw new StorageException("Failed to store empty file " + filename);
@@ -48,6 +55,12 @@ public class StorageServiceImpl implements StorageService {
             try (InputStream inputStream = file.getInputStream()) {
                 Files.copy(inputStream, this.rootLocation.resolve(filename),
                         StandardCopyOption.REPLACE_EXISTING);
+
+                // Save to database
+                ConfigFile configFile = new ConfigFile();
+                configFile.setFileName(filename);
+                configFile.setFileType(filename.endsWith("tle")? "TLE" : "JSON");
+                configFileService.save(configFile);
             }
         }
         catch (IOException e) {

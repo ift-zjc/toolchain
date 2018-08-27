@@ -7,5 +7,6 @@ import lombok.Data;
 public class SatelliteDto {
 
     long time;
+    String julianDate;
     double[] cartesian3;
 }

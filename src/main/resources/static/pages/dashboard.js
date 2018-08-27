@@ -3,6 +3,8 @@ var viewer;
 var fileUploader;
 var popupFileUploader;
 var progressBar;
+var toolbar;
+var fadedLine;
 $(function(){
 
     popupFileUploader = $("#popupFileUploader").dxPopup({
@@ -24,8 +26,16 @@ $(function(){
         shadows: true
     });
 
+    fadedLine = new Cesium.StripeMaterialProperty({
+        evenColor: Cesium.Color.YELLOW.withAlpha( 0.05 ),
+        oddColor: Cesium.Color.BLACK,
+        repeat: 1,
+        offset: 0.2,
+        orientation: Cesium.StripeOrientation.VERTICAL
+    });
+
     // Init toolbar
-    $('#toolbar').dxToolbar({
+    toolbar = $('#toolbar').dxToolbar({
         items: [{
             location: 'center',
             locateInMenu: 'never',
@@ -50,6 +60,7 @@ $(function(){
             options: {
                 text: 'start simulation',
                 icon: 'runner',
+                disabled: false,
                 onClick: function(){
                     $("#progressBar").removeClass("complete");
                     progressBar.option('statusFormat', function(data){return 'Initial Simulator ... ';});
@@ -62,6 +73,13 @@ $(function(){
                         cache: false,
                         success: function(data){
                             // Data will be send through websocket.
+                            console.log(data);
+                            // Remove all entities.
+                            viewer.entities.removeAll();
+                            // Add entities.
+                            _.map(data, function(satellite){
+                               addSatellite(viewer, satellite);
+                            });
                         },
                         error: function (e){
 
@@ -126,4 +144,62 @@ function initWebsocket(){
             progressBar.option('statusFormat', function(event){return data.message + ": " + data.percentage + "%";});
         });
     })
+}
+
+/**
+ * Add satellite data to cesium visualization
+ * @param satelliteName
+ * @param satelliteData
+ */
+function addSatellite(viewer, satellite){
+    var entityTime = Cesium.JulianDate.clone(viewer.clock.startTime, entityTime);
+
+    // Create new entity
+    var newEntity = new Cesium.Entity({
+        id: satellite.name,
+        name: satellite.name,
+        label: new Cesium.LabelGraphics({
+            text: satellite.name,
+            scale: 0.5,
+            pixelOffset: new Cesium.Cartesian2(35,15),
+            scaleByDistance: new Cesium.NearFarScalar(70000000, 1.2, 100000000, 0.5)
+        }),
+        billboard:{
+            image: "/Image/satellite-1.png",
+            show: true
+        }
+
+    });
+
+    // Time and position
+    var positions = new Cesium.SampledPositionProperty();
+    _.each(satellite.satellites, function(data){
+        // Add point as sample
+        positions.addSample(data.julianDate,
+            Cesium.Cartesian3.fromArray(data.cartesian3));
+
+        // // 60" for each record
+        // Cesium.JulianDate.addSeconds(entityTime, 60, entityTime);
+    });
+
+    newEntity.position = positions;
+    newEntity.orientation = new Cesium.VelocityOrientationProperty(positions);
+
+    if(true) {
+        var path = new Cesium.PathGraphics();
+        path.material = fadedLine;
+        path.leadTime = new Cesium.ConstantProperty(0);
+        path.trailTime = new Cesium.ConstantProperty(3600 * 24);
+        newEntity.path = path;
+    }
+
+
+    // Make a smooth path
+    newEntity.position.setInterpolationOptions({
+        interpolationDegree : 5,
+        interpolationAlgorithm : Cesium.LagrangePolynomialApproximation
+    });
+
+    // Add to viewer
+    viewer.entities.add(newEntity);
 }
