@@ -7,6 +7,7 @@ import com.ift.toolchain.model.*;
 import org.hipparchus.ode.nonstiff.AdaptiveStepsizeIntegrator;
 import org.hipparchus.ode.nonstiff.DormandPrince853Integrator;
 import org.hipparchus.util.FastMath;
+import org.joda.time.DateTime;
 import org.orekit.errors.OrekitException;
 import org.orekit.forces.ForceModel;
 import org.orekit.forces.gravity.HolmesFeatherstoneAttractionModel;
@@ -33,6 +34,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import sun.util.resources.LocaleData;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -168,24 +170,16 @@ public class DataAccessController {
         Arrays.stream(files).forEach(file -> {
             storageService.store(file);
         });
-    }
 
-
-    @Autowired
-    SimpMessagingTemplate webSocket;
-    @Autowired
-    ConfigFileService configFileService;
-
-    @PostMapping("/simulation/start")
-    public List<SatelliteCollection> simulate() throws Exception{
-
-        sendMessage("Start reading TLE data ...", 1f);
+        // Save to database
         // Get TLE file
         ConfigFile tleFile= configFileService.getConfigFile("TLE");
         Path path = storageService.load(tleFile.getFileName());
         List<String> tleList = new ArrayList<>();
         try (Stream<String> stream = Files.lines(path)){
             tleList = stream.collect(Collectors.toList());
+        } catch (IOException e) {
+            e.printStackTrace();
         }
 
         // Load to TLE Dto （every 3 lines)
@@ -204,6 +198,10 @@ public class DataAccessController {
             if(i == 1){
                 // Line 1
                 tleDto.setClassification(tleLine.substring(7, 8).trim());
+                int year2digits = Integer.parseInt(tleLine.substring(9,11).trim());
+                tleDto.setLaunchYear(year2digits > 50 ? 1900 + year2digits : 2000 + year2digits);
+                tleDto.setLaunchNumber(tleLine.substring(11, 14).trim());
+                tleDto.setLaunchPiece(tleLine.substring(14, 17).trim());
                 tleDto.setEpochYear(Integer.parseInt(tleLine.substring(18, 20).trim()));
                 tleDto.setJulianFraction(Double.parseDouble(tleLine.substring(20, 32).trim()));
             }
@@ -224,8 +222,45 @@ public class DataAccessController {
 
             i++;
         }
+
+        /**
+         * Generate orbit
+         */
+        List<SatelliteCollection> satelliteCollections = new ArrayList<>();
+        Autoconfiguration.configureOrekit();
+
+        int satelliteCnt = tleDtos.size();
+        float index = 1f;
+        for(Tle item : tleDtos){
+            tleService.save(item);
+
+            // Start generate orbits
+            try {
+                satelliteCollections.add(createOrbit(item));
+            } catch (OrekitException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+
+    @Autowired
+    SimpMessagingTemplate webSocket;
+    @Autowired
+    ConfigFileService configFileService;
+
+    @PostMapping("/simulation/start")
+    public SatellitePopulated simulate() throws Exception{
+
+        sendMessage("Start reading TLE data ...", 1f);
+
+        List<Tle> tleDtos = tleService.getAllTles();
+
         sendMessage("TLE data acquired ...", 10f);
 
+        List<SatelliteItem> satelliteItems = new ArrayList<>();
+        String categoryId = UUID.randomUUID().toString();
+        satelliteItems.add(new SatelliteItem(categoryId, "GPS Satellites", true));
 
         /**
          * Generate orbit
@@ -237,7 +272,8 @@ public class DataAccessController {
         int satelliteCnt = tleDtos.size();
         float index = 1f;
         for(Tle item : tleDtos){
-            tleService.save(item);
+
+            satelliteItems.add(new SatelliteItem(UUID.randomUUID().toString(), item.getName(), false, categoryId));
 
             sendMessage("Generating satellite data (" + item.getName() +  ") ...", 11f + (100f-11f)/(1 + (satelliteCnt - index++)));
             // Start generate orbits
@@ -250,9 +286,69 @@ public class DataAccessController {
 
         webSocket.convertAndSend("/topic/simulation/start", new SimulationMessage("TLE data acquired ...", 100.0f));
 
-        return satelliteCollections;
+        SatellitePopulated satellitePopulated = new SatellitePopulated();
+        satellitePopulated.setSatelliteCollections(satelliteCollections);
+        satellitePopulated.setSatelliteItems(satelliteItems);
+
+        return satellitePopulated;
 
     }
+
+
+
+    @PostMapping(value = "/satellite/currentstatus", consumes = "application/json")
+    public List<NameValue> getSatelliteStatus(@RequestBody Map<String, Object> payload) throws OrekitException {
+        String satelliteName = payload.get("satelliteName").toString();
+        String julianTime = payload.get("time").toString();
+
+        // Get Tle entity based on satellite name
+        Tle tle = tleService.getByName(satelliteName);
+        // Get initial orb
+        Autoconfiguration.configureOrekit();
+        Orbit initialOrbit = getInitialOrb(tle);
+
+        /**
+         * Slave mode
+         */
+        KeplerianPropagator keplerianPropagator = new KeplerianPropagator(initialOrbit);
+        // Set to slave mode
+        keplerianPropagator.setSlaveMode();
+
+        // Get current absolute date based on juliandate
+        DateTime dateTime = DateTime.parse(julianTime.length()>23 ? julianTime.substring(0, 23) : julianTime);        // cut time string
+        AbsoluteDate absoluteDate = new AbsoluteDate(dateTime.toDate(), TimeScalesFactory.getUTC());
+
+        // Get orbit status
+        SpacecraftState currentState = keplerianPropagator.propagate(absoluteDate);
+        KeplerianOrbit o = (KeplerianOrbit) OrbitType.KEPLERIAN.convertType(currentState.getOrbit());
+
+        List<NameValue> nameValues = new ArrayList<>();
+
+        // Populate status
+        nameValues.add( new NameValue("Satellite Name", satelliteName));
+        nameValues.add( new NameValue("Satellite Id", tle.getNumber()));
+        nameValues.add( new NameValue("Classification", tle.getClassification().equalsIgnoreCase("U")? "No" : "Yes"));
+        nameValues.add( new NameValue("COSPAR ID", tle.getLaunchYear()+"-"+tle.getLaunchNumber()+tle.getLaunchPiece()));
+        nameValues.add( new NameValue("Inclination", FastMath.toDegrees(o.getI()) + "\u00B0"));
+        nameValues.add( new NameValue("Eccentricity", o.getEccentricAnomaly()));
+        nameValues.add( new NameValue("RA ascending node", o.getRightAscensionOfAscendingNode()));
+        nameValues.add( new NameValue("Argument perihelion", FastMath.toDegrees(o.getPerigeeArgument()) + "\u00B0"));
+        nameValues.add( new NameValue("Mean anomaly", FastMath.toDegrees(o.getMeanAnomaly())  + "\u00B0"));
+        nameValues.add( new NameValue("Position X[m]", o.getPVCoordinates().getPosition().getX()) );
+        nameValues.add( new NameValue("Position Y[m]", o.getPVCoordinates().getPosition().getY()));
+        nameValues.add( new NameValue("Position Z[m]", o.getPVCoordinates().getPosition().getZ()));
+        nameValues.add( new NameValue("Angular Velocity X", o.getPVCoordinates().getAngularVelocity().getX()));
+        nameValues.add( new NameValue("Angular Velocity Y", o.getPVCoordinates().getAngularVelocity().getY()));
+        nameValues.add( new NameValue("Angular Velocity Z", o.getPVCoordinates().getAngularVelocity().getZ()));
+        nameValues.add( new NameValue("Acceleration X", o.getPVCoordinates().getAcceleration().getX()));
+        nameValues.add( new NameValue("Acceleration Y", o.getPVCoordinates().getAcceleration().getY()));
+        nameValues.add( new NameValue("Acceleration Z", o.getPVCoordinates().getAcceleration().getZ()));
+
+        return nameValues;
+
+    }
+
+
 
     private void julianFractionConverter(Tle tleDto){
 
@@ -299,21 +395,7 @@ public class DataAccessController {
      */
     private SatelliteCollection createOrbit(Tle tleDto) throws OrekitException {
 
-        Frame inertialFrame = FramesFactory.getEME2000();
-        // Init date
-        TimeScale utc = TimeScalesFactory.getUTC();
-        AbsoluteDate initialDate = new AbsoluteDate(tleDto.getYear(), tleDto.getMonth(), tleDto.getDay(), tleDto.getHour(), tleDto.getMinute(), tleDto.getSecond(), utc);
-        // Center attraction coefficient
-        double mu = 3.986004415e+14;
-        // Initial orbit
-        double a = Math.pow(u, 1d/3) / Math.pow((2*tleDto.getMeanMotion()*Math.PI/86400), 2d/3);                             //24396159;                    // semi major axis in meters
-        double e = tleDto.getEccentricity();    // 0.72831215;                  // eccentricity
-        double i = FastMath.toRadians(tleDto.getInclination());       // inclination
-        double omega = FastMath.toRadians(tleDto.getPerigeeArgument()); // perigee argument
-        double raan = FastMath.toRadians(tleDto.getAscensionAscending());  // right ascention of ascending node
-        double lM = tleDto.getMeanAnomaly();                          // mean anomaly
-        Orbit initialOrbit = new KeplerianOrbit(a, e, i, omega, raan, lM, PositionAngle.MEAN,
-                inertialFrame, initialDate, mu);
+        Orbit initialOrbit = getInitialOrb(tleDto);
 
         /**
          * Slave mode
@@ -326,18 +408,18 @@ public class DataAccessController {
         satelliteCollection.setName(tleDto.getName());
         List<SatelliteDto> satelliteDtos = new ArrayList<>();
         // Propagation
-        double duration = 6000.;
+        double duration = 3600. * 12;
         AbsoluteDate finalDate = new AbsoluteDate(new Date(), TimeScalesFactory.getUTC()).shiftedBy(duration);
-        double stepT = 60.;
+        double stepT = 120.;
         int cpt = 1;
-        for (AbsoluteDate extrapDate = new AbsoluteDate(new Date(), TimeScalesFactory.getUTC());
+        for (AbsoluteDate extrapDate = new AbsoluteDate(new Date(), TimeScalesFactory.getUTC()).shiftedBy(-60);
              extrapDate.compareTo(finalDate) <= 0;
              extrapDate = extrapDate.shiftedBy(stepT)){
 
             SpacecraftState currentState = keplerianPropagator.propagate(extrapDate);
-            System.out.println("step " + cpt);
-            System.out.println(" time : " + currentState.getDate());
-            System.out.println(" " + currentState.getOrbit());
+//            System.out.println("step " + cpt);
+//            System.out.println(" time : " + currentState.getDate());
+//            System.out.println(" " + currentState.getOrbit());
 
             KeplerianOrbit o = (KeplerianOrbit) OrbitType.KEPLERIAN.convertType(currentState.getOrbit());
             CartesianOrbit cartesianOrbit = new CartesianOrbit(o);
@@ -388,6 +470,32 @@ public class DataAccessController {
 //        SpacecraftState finalState =
 //                propagator.propagate(new AbsoluteDate(initialDate, 63000.));
 
+    }
+
+    /**
+     * Get intial orb
+     * @param tleDto
+     * @return
+     * @throws OrekitException
+     */
+    private Orbit getInitialOrb(Tle tleDto) throws OrekitException {
+        Frame inertialFrame = FramesFactory.getEME2000();
+        // Init date
+        TimeScale utc = TimeScalesFactory.getUTC();
+        AbsoluteDate initialDate = new AbsoluteDate(tleDto.getYear(), tleDto.getMonth(), tleDto.getDay(), tleDto.getHour(), tleDto.getMinute(), tleDto.getSecond(), utc);
+        // Center attraction coefficient
+        double mu = 3.986004415e+14;
+        // Initial orbit
+        double a = Math.pow(u, 1d/3) / Math.pow((2*tleDto.getMeanMotion()*Math.PI/86400), 2d/3);                             //24396159;                    // semi major axis in meters
+        double e = tleDto.getEccentricity();    // 0.72831215;                  // eccentricity
+        double i = FastMath.toRadians(tleDto.getInclination());       // inclination
+        double omega = FastMath.toRadians(tleDto.getPerigeeArgument()); // perigee argument
+        double raan = FastMath.toRadians(tleDto.getAscensionAscending());  // right ascention of ascending node
+        double lM = tleDto.getMeanAnomaly();                          // mean anomaly
+        Orbit initialOrbit = new KeplerianOrbit(a, e, i, omega, raan, lM, PositionAngle.MEAN,
+                inertialFrame, initialDate, mu);
+
+        return initialOrbit;
     }
 
     private static class TutorialStepHandler implements OrekitFixedStepHandler {

@@ -3,6 +3,7 @@ package com.ift.toolchain.model;
 import lombok.Data;
 import org.hibernate.annotations.GenericGenerator;
 
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
@@ -17,9 +18,13 @@ public class Tle {
     @GenericGenerator(name="system-uuid", strategy = "org.hibernate.id.UUIDGenerator")
     private String id;
 
+    @Column(unique = true)
     private String name;
     private String number;
     private String classification;
+    private int launchYear;
+    private String launchNumber;
+    private String launchPiece;
     private double inclination;
     private double ascensionAscending;
     private double eccentricity;
@@ -38,4 +43,6 @@ public class Tle {
     private String julianDateStr;
 
     private double julianFraction;          // epoch julian day with fraction from current year Jan/1
+
+    private boolean enabled = true;
 }

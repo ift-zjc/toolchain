@@ -5,6 +5,14 @@ var popupFileUploader;
 var progressBar;
 var toolbar;
 var fadedLine;
+
+var dsSatellites;
+var treeSatellites;
+var dsSatelliteStatus;
+var dxSatelliteStatus;
+
+var tickTriggerGap = 10;        //in second
+var currentTick;
 $(function(){
 
     popupFileUploader = $("#popupFileUploader").dxPopup({
@@ -15,13 +23,13 @@ $(function(){
     }).dxPopup("instance");
 
     // Bing map key
-    Cesium.BingMapsApi.defaultKey = 'Ak8mO9f0VpoByuNwmMcVvFka1GCZ3Bh8VrpqNLqGtIgsuUYjTrJdw7kDZwAwlC7E';
-    terrainProvider = new Cesium.CesiumTerrainProvider({
-        url : 'https://assets.agi.com/stk-terrain/world',
-        requestVertexNormals : true
-    });
+    // Cesium.BingMapsApi.defaultKey = 'Ak8mO9f0VpoByuNwmMcVvFka1GCZ3Bh8VrpqNLqGtIgsuUYjTrJdw7kDZwAwlC7E';
+    // terrainProvider = new Cesium.CesiumTerrainProvider({
+    //     url : 'https://assets.agi.com/stk-terrain/world',
+    //     requestVertexNormals : true
+    // });
     viewer = new Cesium.Viewer('cesiumContainer', {
-        terrainProvider : terrainProvider,
+        terrainProvider : Cesium.createWorldTerrain(),
         baseLayerPicker : false,
         shadows: true
     });
@@ -34,7 +42,37 @@ $(function(){
         orientation: Cesium.StripeOrientation.VERTICAL
     });
 
+    /**
+     * Events
+     * @type {jQuery}
+     */
+    viewer.selectedEntityChanged.addEventListener(handleSelectedEntityChangedEvent);
+    viewer.clock.onTick.addEventListener(handleTick);
+
+
     // Init toolbar
+    $('#satelliteToolbar').dxToolbar({
+        items: [{
+            location: 'before',
+            widget: 'dxButton',
+            options: {
+                text: 'Add Satellite',
+                onClick: function (){
+
+                }
+            }
+        },{
+            location: 'before',
+            widget: 'dxButton',
+            options: {
+                text: 'Remove Satellite',
+                onClick: function (){
+
+                }
+            }
+        }]
+    });
+
     toolbar = $('#toolbar').dxToolbar({
         items: [{
             location: 'center',
@@ -72,14 +110,28 @@ $(function(){
                         url: "/api/simulation/start",
                         cache: false,
                         success: function(data){
-                            // Data will be send through websocket.
-                            console.log(data);
                             // Remove all entities.
                             viewer.entities.removeAll();
                             // Add entities.
-                            _.map(data, function(satellite){
+                            _.map(data.satelliteCollections, function(satellite){
                                addSatellite(viewer, satellite);
                             });
+
+                            // Update treeviewer
+                            treeSatellites.option('items', data.satelliteItems);
+                            // treeSatellites = $('#satalliteTree').dxTreeView({
+                            //     items: data.satelliteItems,
+                            //     dataStructure: 'plain',
+                            //     height: $('#cesiumContainer').height(),
+                            //     parentIdExpr: "categoryId",
+                            //     keyExpr: 'id',
+                            //     displayExpr: 'name',
+                            //     searchEnabled: true,
+                            //     onItemClick: function (e) {
+                            //         var item = e.itemData;
+                            //     }
+                            //
+                            // }).dxTreeView('instance');
                         },
                         error: function (e){
 
@@ -127,8 +179,91 @@ $(function(){
         }
     }).dxProgressBar('instance');
 
+    initSatelliteStatusGrid();
+    initSatelliteTree();
     initWebsocket();
+    initLayoutEvent();
 });
+
+function initSatelliteStatusGrid(){
+
+    dsSatelliteStatus = new DevExpress.data.ArrayStore({
+        // data: satelliteDs,
+        key: ['name'],
+        onLoaded: function () {
+            // Event handling commands go here
+
+        },
+        onUpdated: function() {
+            dxSatelliteStatus.refresh();
+        },
+        onInserted: function() {
+            dxSatelliteStatus.refresh();
+        },
+        onRemoved: function() {
+            dxSatelliteStatus.refresh();
+        }
+    });
+
+    dxSatelliteStatus = $('#satelliteStatus').dxDataGrid({
+        dataSource: dsSatelliteStatus,
+        showColumnLines:true,
+        showRowLines:true,
+        showBorders:true,
+        width: 'inherit',
+        height: '100%',
+        paging:{
+            pageSize: 100
+        },
+        pager: {
+            showPageSizeSelector: false,
+            allowedPageSizes: [100],
+            visible: false,
+            showInfo: false,
+            showNavigationButtons: false
+        },
+        columns: [
+            {
+                dataField: "name",
+                caption: "Property",
+                width:150,
+                alignment: "left"
+            },{
+                dataField: "value",
+                caption: "Value",
+                alignment: "left",
+                width:200
+            }
+        ],
+        onCellPrepared: function (e) {
+            if(e.rowType == 'data'){
+                if(e.column.dataField == 'name' || e.column.dataField == 'value'){
+                    e.cellElement.addClass('armyGreen');
+                }
+            }
+        }
+    }).dxDataGrid('instance');
+}
+
+function initSatelliteTree(){
+
+    treeSatellites = $('#satalliteTree').dxTreeView({
+        // dataSource: treeSatellites,
+        dataStructure: 'plain',
+        height: '100%',
+        parentIdExpr: "categoryId",
+        keyExpr: 'id',
+        displayExpr: 'name',
+        searchEnabled: true,
+        onItemClick: function (e) {
+            var item = e.itemData;
+
+            // Change selected entity on cesium viewer.
+            viewer.selectedEntity = viewer.entities.getById(item.name);
+        }
+
+    }).dxTreeView('instance');
+}
 
 /**
  * Web socket initial to /simulation-websocket
@@ -202,4 +337,88 @@ function addSatellite(viewer, satellite){
 
     // Add to viewer
     viewer.entities.add(newEntity);
+}
+
+function initLayoutEvent(){
+    // Sync table height with viewer height.
+    // $(window).on('resize', function(){
+    //     dxSatelliteStatus.option('height', $('#cesiumContainer').height());
+    //     treeSatellites.option('height', $('#cesiumContainer').height());
+    // });
+}
+
+function handleTick(clock){
+
+    if((! _.isUndefined(viewer.selectedEntity)) && (_.isUndefined(currentTick) ||
+        clock.currentTime.dayNumber != currentTick.dayNumber ||
+        Math.abs(clock.currentTime.secondsOfDay-currentTick.secondsOfDay) > tickTriggerGap)){
+        // Update table
+        // Calling orekit for detailed data
+        var data = {'satelliteName': viewer.selectedEntity.name, 'time': clock.currentTime.toString()};
+        currentTick = clock.currentTime;
+        $.ajax({
+            method: 'POST',
+            url: '/api/satellite/currentstatus',
+            cache: true,
+            data: JSON.stringify(data),
+            contentType: "application/json",
+            success: function (data){
+
+                _.each(data, function(item){
+                    dsSatelliteStatus.update({name: item.name}, {
+                        name: item.name,
+                        value: item.value
+                    })
+                })
+
+            },
+            error: function (data){
+
+            }
+        })
+    }
+
+}
+
+
+function handleSelectedEntityChangedEvent(event){
+
+    // unselected entity.
+    if(_.isUndefined(event)) return;
+
+    var selectedSatelliteName = event.name;
+    // Calling orekit for detailed data
+    var data = {'satelliteName': selectedSatelliteName, 'time': viewer.clock.currentTime.toString()};
+    $.ajax({
+        method: 'POST',
+        url: '/api/satellite/currentstatus',
+        cache: true,
+        data: JSON.stringify(data),
+        contentType: "application/json",
+        success: function (data){
+
+            // Check datasource for inserting or update
+            dsSatelliteStatus.totalCount().done(function (count){
+                if(count == 0){
+                    _.each(data, function(item){
+                        dsSatelliteStatus.insert({
+                            name: item.name,
+                            value: item.value
+                        })
+                    })
+                }else{
+                    _.each(data, function(item){
+                        dsSatelliteStatus.update({name: item.name}, {
+                            name: item.name,
+                            value: item.value
+                        })
+                    })
+                }
+            });
+
+        },
+        error: function (data){
+
+        }
+    })
 }
