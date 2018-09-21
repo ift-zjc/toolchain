@@ -5,13 +5,6 @@ import com.ift.toolchain.model.MessageHub;
 
 public interface MessageHubService {
 
-    public MessageHub create(String sourceId,
-                             String destId,
-                             long msgEffTime,
-                             int msgType,
-                             int subMsgType,
-                             float paramData1,
-                             float paramData2);
-
-    public MessageHub create(ObjectEvent objectEvent);
+    public MessageHub save(MessageHub messageHub);
+    public void removeAll();
 }

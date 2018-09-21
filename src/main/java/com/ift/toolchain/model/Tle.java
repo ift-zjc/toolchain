@@ -21,9 +21,9 @@ public class Tle {
     @Column(unique = true)
     private String name;
     private String number;
-    private String classification;
+    private char classification;
     private int launchYear;
-    private String launchNumber;
+    private int launchNumber;
     private String launchPiece;
     private double inclination;
     private double ascensionAscending;

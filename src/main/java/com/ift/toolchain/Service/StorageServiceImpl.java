@@ -39,7 +39,7 @@ public class StorageServiceImpl implements StorageService {
 
 
     @Override
-    public void store(MultipartFile file) {
+    public String store(MultipartFile file) {
         String filename = StringUtils.cleanPath(file.getOriginalFilename());
         filename = UUID.randomUUID().toString().concat("_").concat(filename);
         try {
@@ -62,6 +62,8 @@ public class StorageServiceImpl implements StorageService {
                 configFile.setFileType(filename.endsWith("tle")? "TLE" : "JSON");
                 configFileService.save(configFile);
             }
+
+            return filename;
         }
         catch (IOException e) {
             throw new StorageException("Failed to store file " + filename, e);

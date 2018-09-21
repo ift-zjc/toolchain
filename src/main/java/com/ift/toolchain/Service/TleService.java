@@ -36,4 +36,11 @@ public class TleService {
      * @return
      */
     public List<Tle> getAllTles(){return tleRepository.getTleByEnabled(true);}
+
+    /**
+     * Remove all records
+     */
+    public void removeRecords(){
+        tleRepository.deleteAll();
+    }
 }

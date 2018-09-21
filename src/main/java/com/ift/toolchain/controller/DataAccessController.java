@@ -3,12 +3,16 @@ package com.ift.toolchain.controller;
 import com.ift.toolchain.Service.*;
 import com.ift.toolchain.configuration.Autoconfiguration;
 import com.ift.toolchain.dto.*;
+import com.ift.toolchain.dto.SatellitePosition;
+import com.ift.toolchain.dto.SatelliteXSatellite;
 import com.ift.toolchain.model.*;
+import org.hipparchus.geometry.euclidean.threed.Vector3D;
 import org.hipparchus.ode.nonstiff.AdaptiveStepsizeIntegrator;
 import org.hipparchus.ode.nonstiff.DormandPrince853Integrator;
 import org.hipparchus.util.FastMath;
 import org.joda.time.DateTime;
 import org.orekit.errors.OrekitException;
+import org.orekit.estimation.measurements.InterSatellitesRange;
 import org.orekit.forces.ForceModel;
 import org.orekit.forces.gravity.HolmesFeatherstoneAttractionModel;
 import org.orekit.forces.gravity.potential.GravityFieldFactory;
@@ -19,11 +23,13 @@ import org.orekit.orbits.*;
 import org.orekit.orbits.Orbit;
 import org.orekit.propagation.SpacecraftState;
 import org.orekit.propagation.analytical.KeplerianPropagator;
+import org.orekit.propagation.analytical.tle.TLE;
 import org.orekit.propagation.numerical.NumericalPropagator;
 import org.orekit.propagation.sampling.OrekitFixedStepHandler;
 import org.orekit.time.AbsoluteDate;
 import org.orekit.time.TimeScale;
 import org.orekit.time.TimeScalesFactory;
+import org.orekit.utils.Constants;
 import org.orekit.utils.IERSConventions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -34,7 +40,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import sun.util.resources.LocaleData;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.StringReader;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -64,13 +72,6 @@ public class DataAccessController {
 
     @Autowired
     TrafficeModelGenericService trafficeModelGenericService;
-
-    @PostMapping(value = "/event/trigger")
-    public void saveEvent(@RequestBody ObjectEvent objectEvent){
-
-        MessageHub messageHub = messageHubService.create(objectEvent);
-
-    }
 
 
     /**
@@ -168,89 +169,50 @@ public class DataAccessController {
         // manipulate file name
         // Save to storage
         Arrays.stream(files).forEach(file -> {
-            storageService.store(file);
-        });
+            String filename = storageService.store(file);
 
-        // Save to database
-        // Get TLE file
-        ConfigFile tleFile= configFileService.getConfigFile("TLE");
-        Path path = storageService.load(tleFile.getFileName());
-        List<String> tleList = new ArrayList<>();
-        try (Stream<String> stream = Files.lines(path)){
-            tleList = stream.collect(Collectors.toList());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        // Load to TLE Dto （every 3 lines)
-        List<Tle> tleDtos = new ArrayList<>();
-        int i = 0;
-        Tle tleDto = new Tle();
-        for(String tleLine : tleList){
-            if(i%3 == 0){
-                i = 0;
-            }
-
-            if(i == 0){
-                tleDto = new Tle();
-                tleDto.setName(tleLine.substring(0,24).trim());
-            }
-            if(i == 1){
-                // Line 1
-                tleDto.setClassification(tleLine.substring(7, 8).trim());
-                int year2digits = Integer.parseInt(tleLine.substring(9,11).trim());
-                tleDto.setLaunchYear(year2digits > 50 ? 1900 + year2digits : 2000 + year2digits);
-                tleDto.setLaunchNumber(tleLine.substring(11, 14).trim());
-                tleDto.setLaunchPiece(tleLine.substring(14, 17).trim());
-                tleDto.setEpochYear(Integer.parseInt(tleLine.substring(18, 20).trim()));
-                tleDto.setJulianFraction(Double.parseDouble(tleLine.substring(20, 32).trim()));
-            }
-            if(i == 2){
-                // Line 2
-                tleDto.setNumber(tleLine.substring(2,7).trim());
-                tleDto.setInclination(Double.parseDouble(tleLine.substring(8, 16).trim()));
-                tleDto.setAscensionAscending(Double.parseDouble(tleLine.substring(17, 25).trim()));
-                tleDto.setEccentricity(Double.parseDouble("0."+tleLine.substring(26, 33).trim()));
-                tleDto.setPerigeeArgument(Double.parseDouble(tleLine.substring(34, 42).trim()));
-                tleDto.setMeanAnomaly(Double.parseDouble(tleLine.substring(43, 51).trim()));
-                tleDto.setMeanMotion(Double.parseDouble(tleLine.substring(52, 63).trim()));
-
-                julianFractionConverter(tleDto);
-
-                tleDtos.add(tleDto);
-            }
-
-            i++;
-        }
-
-        /**
-         * Generate orbit
-         */
-        List<SatelliteCollection> satelliteCollections = new ArrayList<>();
-        Autoconfiguration.configureOrekit();
-
-        int satelliteCnt = tleDtos.size();
-        float index = 1f;
-        for(Tle item : tleDtos){
-            tleService.save(item);
-
-            // Start generate orbits
-            try {
-                satelliteCollections.add(createOrbit(item));
-            } catch (OrekitException e) {
+            // Save to database
+            // Get TLE file
+//            ConfigFile tleFile= configFileService.getConfigFile("TLE");
+            Path path = storageService.load(filename);
+            List<String> tleList = new ArrayList<>();
+            try (Stream<String> stream = Files.lines(path)){
+                tleList = stream.collect(Collectors.toList());
+            } catch (IOException e) {
                 e.printStackTrace();
             }
-        }
+
+            List<Tle> tleDtos = convertToTleDto(tleList);
+
+            /**
+             * Generate orbit
+             */
+            List<SatelliteCollection> satelliteCollections = new ArrayList<>();
+            Autoconfiguration.configureOrekit();
+
+            int satelliteCnt = tleDtos.size();
+            float index = 1f;
+            for(Tle item : tleDtos){
+                try{
+                    tleService.save(item);
+                }catch(Exception ex){
+                    // TODO handle DB exception, ignore now.
+                    // Database error, most for duplicated record
+                }
+
+            }
+        });
     }
 
+    private final String categoryId = "GPS_SATELLITES";
 
     @Autowired
     SimpMessagingTemplate webSocket;
     @Autowired
     ConfigFileService configFileService;
 
-    @PostMapping("/simulation/start")
-    public SatellitePopulated simulate() throws Exception{
+    @PostMapping("/simulation/populateobjects")
+    public SatellitePopulated populateobjects() throws Exception{
 
         sendMessage("Start reading TLE data ...", 1f);
 
@@ -259,7 +221,6 @@ public class DataAccessController {
         sendMessage("TLE data acquired ...", 10f);
 
         List<SatelliteItem> satelliteItems = new ArrayList<>();
-        String categoryId = UUID.randomUUID().toString();
         satelliteItems.add(new SatelliteItem(categoryId, "GPS Satellites", true));
 
         /**
@@ -284,7 +245,7 @@ public class DataAccessController {
             }
         }
 
-        webSocket.convertAndSend("/topic/simulation/start", new SimulationMessage("TLE data acquired ...", 100.0f));
+        sendMessage("TLE data acquired ...", 100f);
 
         SatellitePopulated satellitePopulated = new SatellitePopulated();
         satellitePopulated.setSatelliteCollections(satelliteCollections);
@@ -294,12 +255,184 @@ public class DataAccessController {
 
     }
 
+    /**
+     * Add satellites via 2-line element string
+     * @param payload
+     * @return
+     */
+    @PostMapping(value = "/satellite/add", consumes = "application/json")
+    public SatellitePopulated addSatellites(@RequestBody Map<String, Object> payload){
+
+        // Read satellite TLE content
+        String tleContent = payload.get("tle").toString();
+        List<String> tleList = new BufferedReader(new StringReader(tleContent)).lines().collect(Collectors.toList());
+
+        List<Tle> tleDtos = convertToTleDto(tleList);
+
+        /**
+         * Generate orbit
+         */
+        List<SatelliteItem> satelliteItems = new ArrayList<>();
+        List<SatelliteCollection> satelliteCollections = new ArrayList<>();
+        Autoconfiguration.configureOrekit();
+
+        satelliteItems.add(new SatelliteItem(categoryId, "GPS Satellites", true));
+
+        int satelliteCnt = tleDtos.size();
+        float index = 1f;
+        for(Tle item : tleDtos){
+            try {
+                // Save to database
+                tleService.save(item);
+                // Start generate orbits
+                satelliteItems.add(new SatelliteItem(UUID.randomUUID().toString(), item.getName(), false, categoryId));
+                try {
+                    satelliteCollections.add(createOrbit(item));
+                } catch (OrekitException e) {
+                    e.printStackTrace();
+                }
+            }catch(Exception e){
+                // TODO handle DB exception, ignore now.
+            }
+        }
+
+        SatellitePopulated satellitePopulated = new SatellitePopulated();
+        satellitePopulated.setSatelliteCollections(satelliteCollections);
+        satellitePopulated.setSatelliteItems(satelliteItems);
+
+        return satellitePopulated;
+    }
+
+    @PostMapping(value = "/simulation/start", consumes = "application/json")
+    public String startSimulator(@RequestBody Map<String, Object> payload) throws OrekitException {
+
+        Autoconfiguration.configureOrekit();
+        int step = 30;      // second
+        float delta = 0.05f;  // 10%;
+        String startTime = payload.get("timeStart").toString();
+        String endTime = payload.get("timeEnd").toString();
+
+        // Convert to datetime
+        DateTime startDateTime = DateTime.parse(startTime);
+        DateTime endDateTime = DateTime.parse(endTime);
+        AbsoluteDate absoluteStartDate = new AbsoluteDate(startDateTime.toDate(), TimeScalesFactory.getUTC());
+        AbsoluteDate absoluteEndDate = new AbsoluteDate(endDateTime.toDate(), TimeScalesFactory.getUTC());
+
+        // Propagation every n second
+        // Get all the objects from database
+        List<Tle> tleDtos = tleService.getAllTles();
+        KeplerianPropagator propagator1;
+        KeplerianPropagator propagator2;
+
+        // Remove all messages before start
+        messageHubService.removeAll();
+
+        for (int i = 0; i<tleDtos.size()-1; i++){
+            Orbit orbit1Init = this.getInitialOrb(tleDtos.get(i));
+            AbsoluteDate absoluteDateCurrentStartDate = absoluteStartDate;
+            propagator1 = new KeplerianPropagator(orbit1Init);
+            propagator1.setSlaveMode();
+
+            for(int j = i+1; j<tleDtos.size(); j++){
+
+                MessageHub messageHub = new MessageHub();
+                Orbit orbit2Init = this.getInitialOrb(tleDtos.get(j));
+                propagator2 = new KeplerianPropagator(orbit2Init);
+                propagator2.setSlaveMode();
+                // Loop between time.
+                while(absoluteDateCurrentStartDate.compareTo(absoluteEndDate) <= 0){
+                    // propagate
+
+                    SpacecraftState currentState1 = propagator1.propagate(absoluteDateCurrentStartDate);
+                    SpacecraftState currentState2 = propagator2.propagate(absoluteDateCurrentStartDate);
+
+                    // Calculate line of sight
+                    double eta = FastMath.asin(Constants.WGS84_EARTH_EQUATORIAL_RADIUS / currentState1.getPVCoordinates().getPosition().getNorm());
+                    double gamma = Vector3D.angle(currentState1.getPVCoordinates().getPosition().negate(), currentState2.getPVCoordinates().getPosition().subtract(currentState1.getPVCoordinates().getPosition()));
+                    double distance = Vector3D.distance(currentState1.getPVCoordinates().getPosition(), currentState2.getPVCoordinates().getPosition());
+                    boolean los = (gamma > eta
+                            || (
+                                    gamma < eta
+                                            && distance < currentState1.getPVCoordinates().getPosition().getNorm()));
 
 
+
+                    boolean losChanged = los != messageHub.isLos();
+                    boolean distanceChanged = Math.abs((messageHub.getDistance()-distance)/messageHub.getDistance())>=delta;
+
+                    boolean needUpdate = absoluteDateCurrentStartDate.compareTo(absoluteStartDate) == 0 ||
+                            distanceChanged || losChanged;
+
+                    if(needUpdate) {
+                        messageHub = new MessageHub();
+                        messageHub.setSourceId(tleDtos.get(i).getId());
+                        messageHub.setDestinationId(tleDtos.get(j).getId());
+                        messageHub.setDate(absoluteDateCurrentStartDate.toDate(TimeScalesFactory.getUTC()));
+                        messageHub.setLos(los);
+                        messageHub.setDistance(distance);
+                        if (absoluteDateCurrentStartDate.compareTo(absoluteStartDate) == 0) {
+                            // First record always present
+                            messageHub.setMsgType(0);   // Init
+                            messageHub.setSubMsgType(0);    // Init
+                        }else {
+                            if (losChanged) {
+                                messageHub.setMsgType(1);
+                                messageHub.setSubMsgType(3);                // Connectivity updated
+                            } else {
+                                if(los){
+                                    if(distanceChanged){
+                                        messageHub.setMsgType(1);
+                                        messageHub.setSubMsgType(1);        // Delay updated
+                                    }
+                                }
+                            }
+                        }
+
+                        // Save to database
+                        messageHubService.save(messageHub);
+                    }
+
+
+                    // add 60 seconds
+                    absoluteDateCurrentStartDate = absoluteDateCurrentStartDate.shiftedBy(step);
+                }
+            }
+        }
+
+        return "complete";
+    }
+
+    /**
+     * Disable satellite from database
+     * @param payload
+     * @return
+     */
+    @PostMapping(value = "/satellite/disable", consumes="application/json")
+    public NameValue disableSatellite(@RequestBody Map<String, Object> payload){
+        // Get satellite name
+        String satelliteName = payload.get("name").toString();
+
+        // Get satellite
+        Tle tle = tleService.getByName(satelliteName);
+        tle.setEnabled(false);
+
+        tleService.save(tle);
+
+        return new NameValue("name", tle.getName());
+    }
+
+    /**
+     * Get satellite status in any given time.
+     * @param payload
+     * @return
+     * @throws OrekitException
+     */
     @PostMapping(value = "/satellite/currentstatus", consumes = "application/json")
-    public List<NameValue> getSatelliteStatus(@RequestBody Map<String, Object> payload) throws OrekitException {
+    public SelectedSatelliteDto getSatelliteStatus(@RequestBody Map<String, Object> payload) throws OrekitException {
         String satelliteName = payload.get("satelliteName").toString();
         String julianTime = payload.get("time").toString();
+
+        SelectedSatelliteDto selectedSatelliteDto = new SelectedSatelliteDto();
 
         // Get Tle entity based on satellite name
         Tle tle = tleService.getByName(satelliteName);
@@ -327,7 +460,7 @@ public class DataAccessController {
         // Populate status
         nameValues.add( new NameValue("Satellite Name", satelliteName));
         nameValues.add( new NameValue("Satellite Id", tle.getNumber()));
-        nameValues.add( new NameValue("Classification", tle.getClassification().equalsIgnoreCase("U")? "No" : "Yes"));
+        nameValues.add( new NameValue("Classification", tle.getClassification()));
         nameValues.add( new NameValue("COSPAR ID", tle.getLaunchYear()+"-"+tle.getLaunchNumber()+tle.getLaunchPiece()));
         nameValues.add( new NameValue("Inclination", FastMath.toDegrees(o.getI()) + "\u00B0"));
         nameValues.add( new NameValue("Eccentricity", o.getEccentricAnomaly()));
@@ -344,8 +477,71 @@ public class DataAccessController {
         nameValues.add( new NameValue("Acceleration Y", o.getPVCoordinates().getAcceleration().getY()));
         nameValues.add( new NameValue("Acceleration Z", o.getPVCoordinates().getAcceleration().getZ()));
 
-        return nameValues;
+        selectedSatelliteDto.setSatelliteProperties(nameValues);
 
+        // Find 4 nearest satellites
+        List<SatelliteXSatellite> satelliteXSatellites = new ArrayList<>();
+        // Get all the objects from database
+        List<Tle> tleDtos = tleService.getAllTles();
+        for(int i = 0; i<tleDtos.size(); i++){
+            Tle currentTle = tleDtos.get(i);
+            if(currentTle.getName().equalsIgnoreCase(satelliteName)){
+                continue;
+            }
+
+            // init orbit
+            Orbit orbit1Init = this.getInitialOrb(currentTle);
+            KeplerianPropagator keplerianPropagatorLoop = new KeplerianPropagator(orbit1Init);
+            keplerianPropagatorLoop.setSlaveMode();
+
+            // Get spacecraft state
+            SpacecraftState currentStateLoop = keplerianPropagatorLoop.propagate(absoluteDate);
+
+            // Calculate line of sight
+            double eta = FastMath.asin(Constants.WGS84_EARTH_EQUATORIAL_RADIUS / currentState.getPVCoordinates().getPosition().getNorm());
+            double gamma = Vector3D.angle(currentState.getPVCoordinates().getPosition().negate(), currentStateLoop.getPVCoordinates().getPosition().subtract(currentState.getPVCoordinates().getPosition()));
+            double distance = Vector3D.distance(currentState.getPVCoordinates().getPosition(), currentStateLoop.getPVCoordinates().getPosition());
+            boolean los = (gamma > eta
+                    || (
+                    gamma < eta
+                            && distance < currentState.getPVCoordinates().getPosition().getNorm()));
+
+            if(los){
+                SatelliteXSatellite satelliteXSatellite = new SatelliteXSatellite();
+                satelliteXSatellite.setSource(satelliteName);
+                satelliteXSatellite.setDestination(currentTle.getName());
+                satelliteXSatellite.setDistance(distance);
+                satelliteXSatellite.setAngularVelocity(getAngularVelocity(currentState, currentStateLoop));
+                satelliteXSatellites.add(satelliteXSatellite);
+
+            }
+        }
+
+        selectedSatelliteDto.setSatelliteXSatellites(satelliteXSatellites);
+        return selectedSatelliteDto;
+
+    }
+
+
+    /**
+     * Reset data
+     * @return
+     */
+    @PostMapping(value = "/simulation/reset")
+    public boolean resetSimulation(){
+        boolean success = false;
+
+        try {
+            // Delete all records from TLE table
+            tleService.removeRecords();
+            // Delete all records from message table
+            messageHubService.removeAll();
+            success = true;
+        }catch(Exception ex){
+
+        }
+
+        return success;
     }
 
 
@@ -408,7 +604,7 @@ public class DataAccessController {
         satelliteCollection.setName(tleDto.getName());
         List<SatelliteDto> satelliteDtos = new ArrayList<>();
         // Propagation
-        double duration = 3600. * 12;
+        double duration = 3600. * 24;
         AbsoluteDate finalDate = new AbsoluteDate(new Date(), TimeScalesFactory.getUTC()).shiftedBy(duration);
         double stepT = 120.;
         int cpt = 1;
@@ -425,7 +621,6 @@ public class DataAccessController {
             CartesianOrbit cartesianOrbit = new CartesianOrbit(o);
             SatelliteDto satelliteDto = new SatelliteDto();
             satelliteDto.setTime((long) (stepT*cpt++));
-
             satelliteDto.setJulianDate(cartesianOrbit.getDate().toString()+"Z");
             satelliteDto.setCartesian3(cartesianOrbit.getPVCoordinates().getPosition().toArray());
             satelliteDtos.add(satelliteDto);
@@ -529,5 +724,138 @@ public class DataAccessController {
 
     private void sendMessage(String message, float percentage){
         webSocket.convertAndSend("/topic/simulation/start", new SimulationMessage(message + "     ", percentage));
+    }
+
+    /**
+     * Convert Strings to TLE obje
+     * @param tleContent
+     * @return
+     */
+    private List<Tle> convertToTleDto(List<String> tleContent){
+        // Load to TLE Dto （every 3 lines)
+        List<Tle> tleDtos = new ArrayList<>();
+        int i = 0;
+        Tle tleDto = new Tle();
+        String tleLine1 = "";
+        String tleLine2;
+        for(String tleLine : tleContent){
+            if(i%3 == 0){
+                i = 0;
+            }
+
+            if(i == 0){
+                tleDto = new Tle();
+                tleDto.setName(tleLine.substring(0,24).trim());
+            }
+            if(i == 1){
+                // Line 1
+                tleDto.setClassification(tleLine.substring(7, 8).trim().charAt(0));
+                int year2digits = Integer.parseInt(tleLine.substring(9,11).trim());
+                tleDto.setLaunchYear(year2digits > 50 ? 1900 + year2digits : 2000 + year2digits);
+                tleDto.setLaunchNumber(Integer.parseInt(tleLine.substring(11, 14).trim()));
+                tleDto.setLaunchPiece(tleLine.substring(14, 17).trim());
+                tleDto.setEpochYear(Integer.parseInt(tleLine.substring(18, 20).trim()));
+                tleDto.setJulianFraction(Double.parseDouble(tleLine.substring(20, 32).trim()));
+
+                tleLine1 = tleLine;
+            }
+            if(i == 2){
+                // Line 2
+                tleDto.setNumber(tleLine.substring(2,7).trim());
+                tleDto.setInclination(Double.parseDouble(tleLine.substring(8, 16).trim()));
+                tleDto.setAscensionAscending(Double.parseDouble(tleLine.substring(17, 25).trim()));
+                tleDto.setEccentricity(Double.parseDouble("0."+tleLine.substring(26, 33).trim()));
+                tleDto.setPerigeeArgument(Double.parseDouble(tleLine.substring(34, 42).trim()));
+                tleDto.setMeanAnomaly(Double.parseDouble(tleLine.substring(43, 51).trim()));
+                tleDto.setMeanMotion(Double.parseDouble(tleLine.substring(52, 63).trim()));
+
+                tleLine2 = tleLine;
+
+//                //TODO switch to TLE class
+//                try {
+//                    TLE tle = new TLE(tleLine1, tleLine2);
+//
+////                    tleDto.setClassification(tle.getClassification());
+////                    tleDto.setLaunchYear(tle.getLaunchYear());
+////                    tleDto.setLaunchNumber(tle.getLaunchNumber());
+////                    tleDto.setLaunchPiece(tle.getLaunchPiece());
+////                    tleDto.setName(tle.getElementNumber());
+//
+//                    System.out.println(tle.toString());
+//
+//                } catch (OrekitException e) {
+//                    e.printStackTrace();
+//                }
+
+                julianFractionConverter(tleDto);
+
+                tleDtos.add(tleDto);
+            }
+
+            i++;
+        }
+
+        return tleDtos;
+    }
+
+    /**
+     * Get angle velocity between two satellites in 1 second.
+     * @param satelliteSource
+     * @param satelliteDest
+     * @return
+     */
+    private double getAngularVelocity(SpacecraftState satelliteSource, SpacecraftState satelliteDest){
+
+        // Get angle for current
+//        double distanceCurrent = getDistanceBetweenPair(satelliteSource, satelliteDest);
+//        double aSource = getSqrtPow(satelliteSource);
+//        double bSource = getSqrtPow(satelliteDest);
+//        double angleCurrent = Math.atan(
+//                (satelliteSource.getX()*satelliteDest.getX() + satelliteSource.getY()*satelliteDest.getY() + satelliteSource.getZ()*satelliteDest.getZ())/
+//                Math.sqrt(Math.pow( satelliteSource.getY()*satelliteDest.getZ() - satelliteSource.getZ()*satelliteDest.getY(), 2 ) +
+//                        Math.pow( satelliteSource.getZ()*satelliteDest.getX() - satelliteSource.getX()*satelliteDest.getZ(), 2 ) +
+//                        Math.pow( satelliteSource.getX()*satelliteDest.getY() - satelliteSource.getY()*satelliteDest.getX(), 2 )
+//                ))*Math.PI/180;
+
+        // Get angle for past second
+//        double distanceSecondAgo = getDistanceBetweenPair(satelliteSourceSecondAgo, satelliteDestSecondAgo);
+//        double aSourceSecondAgo = getSqrtPow(satelliteSourceSecondAgo);
+//        double bSourceSecondAgo = getSqrtPow(satelliteDestSecondAgo);
+//        double angleSecondAgo = Math.atan(
+//                (satelliteSourceSecondAgo.getX()*satelliteDestSecondAgo.getX() + satelliteSourceSecondAgo.getY()*satelliteDestSecondAgo.getY() + satelliteSourceSecondAgo.getZ()*satelliteDestSecondAgo.getZ())/
+//                        Math.sqrt(Math.pow( satelliteSourceSecondAgo.getY()*satelliteDestSecondAgo.getZ() - satelliteSourceSecondAgo.getZ()*satelliteDestSecondAgo.getY(), 2 ) +
+//                                Math.pow( satelliteSourceSecondAgo.getZ()*satelliteDestSecondAgo.getX() - satelliteSourceSecondAgo.getX()*satelliteDestSecondAgo.getZ(), 2 ) +
+//                                Math.pow( satelliteSourceSecondAgo.getX()*satelliteDestSecondAgo.getY() - satelliteSourceSecondAgo.getY()*satelliteDestSecondAgo.getX(), 2 )
+//                        ))*Math.PI/180;
+
+        SpacecraftState satelliteSourceAgo = satelliteSource.shiftedBy(-1);
+        SpacecraftState satelliteDestAgo = satelliteDest.shiftedBy(-1);
+
+        double sourceX = satelliteSource.getPVCoordinates().getPosition().getX();
+        double sourceY = satelliteSource.getPVCoordinates().getPosition().getY();
+        double sourceZ = satelliteSource.getPVCoordinates().getPosition().getZ();
+        double sourceXAgo = satelliteSourceAgo.getPVCoordinates().getPosition().getX();
+        double sourceYAgo = satelliteSourceAgo.getPVCoordinates().getPosition().getY();
+        double sourceZAgo = satelliteSourceAgo.getPVCoordinates().getPosition().getZ();
+
+        double destX = satelliteDest.getPVCoordinates().getPosition().getX();
+        double destY = satelliteDest.getPVCoordinates().getPosition().getY();
+        double destZ = satelliteDest.getPVCoordinates().getPosition().getZ();
+        double destXAgo = satelliteDestAgo.getPVCoordinates().getPosition().getX();
+        double destYAgo = satelliteDestAgo.getPVCoordinates().getPosition().getY();
+        double destZAgo = satelliteDestAgo.getPVCoordinates().getPosition().getZ();
+
+        double a2 = Math.atan2(Math.sqrt(Math.pow( sourceY*destZ - sourceZ*destY, 2 ) +
+                Math.pow( sourceZ*destX - sourceX*destZ, 2 ) +
+                Math.pow( sourceX*destY - sourceY*destX, 2 )
+        ), sourceX*destX + sourceY*destY + sourceZ*destZ);
+
+        double a2SecondAgo = Math.atan2(Math.sqrt(Math.pow( sourceYAgo*destZAgo - sourceZAgo*destYAgo, 2 ) +
+                Math.pow( sourceZAgo*destXAgo - sourceXAgo*destZAgo, 2 ) +
+                Math.pow( sourceXAgo*destYAgo - sourceYAgo*destXAgo, 2 )
+        ), sourceXAgo*destXAgo + sourceYAgo*destYAgo + sourceZAgo*destZAgo);
+
+//        return (Math.abs(angleCurrent - angleSecondAgo));
+        return Math.abs(a2-a2SecondAgo);
     }
 }

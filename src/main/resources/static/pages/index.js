@@ -33,6 +33,7 @@ var applicationArray = [{
 
 
 // Traffic model
+
 var trafficModelData;
 
 $(function(){
