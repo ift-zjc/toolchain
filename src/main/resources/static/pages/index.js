@@ -1032,7 +1032,7 @@ function initComponents(){
         onRemoved: function() {
             dgStatistics.refresh();
         }
-    })
+    });
 
     dgStatistics = $("#gridStatistics").dxDataGrid({
         dataSource: satelliteStore,

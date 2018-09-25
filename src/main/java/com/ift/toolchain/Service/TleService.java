@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class TleService {
@@ -36,6 +37,15 @@ public class TleService {
      * @return
      */
     public List<Tle> getAllTles(){return tleRepository.getTleByEnabled(true);}
+
+    /**
+     * Find TLE by id.
+     * @param id
+     * @return
+     */
+    public Optional<Tle> findById(String id){
+        return tleRepository.findById(id);
+    }
 
     /**
      * Remove all records

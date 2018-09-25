@@ -156,36 +156,7 @@ public class SimulateController {
 
 
 
-        for(HashMap<String, Object> hashMap : applicationDtos){
-            long so = Long.parseLong(hashMap.get("startOffset").toString());
-            long eo = Long.parseLong(hashMap.get("endOffset").toString());
-            ApplicationTraffic applicationTraffic = new ApplicationTraffic();
-            applicationTraffic.setAppName(hashMap.get("name").toString());
 
-            // Get traffic model for this application.
-            HashMap<String, String> tmData =  (HashMap<String, String>)hashMap.get("tm");
-            String tmCode = tmData.get("code");
-            // Find traffic model
-            Optional<TrafficModel> trafficModel = trafficModelGenericService.getByCode(tmCode);
-            // Skip to next application if this application's traffic model is not presented.
-            if(!trafficModel.isPresent()){
-                continue;
-            }
-
-            TrafficModel trafficModelExtracted = trafficModel.get();
-            // Loop traffic model attributes and update if necessary
-            trafficModelExtracted.getTrafficModelConfigs().stream().forEach(tmConfig -> {
-                if(tmData.containsKey(tmConfig.getName())){
-                    tmConfig.setValue(String.valueOf(tmData.get(tmConfig.getName())));
-                }
-            });
-
-            TrafficeModelService trafficeModelService = this.getTrafficModelService(tmCode);
-
-            List<ApplicationTrafficData> applicationTrafficDataList = trafficeModelService.simulate(so, eo, trafficModelExtracted.getTrafficModelConfigs());
-            applicationTraffic.setApplicationTrafficDataList(applicationTrafficDataList);
-            applicationTraffics.add(applicationTraffic);
-        }
 
 
         SimulateData simulateData = new SimulateData();
@@ -307,48 +278,7 @@ public class SimulateController {
     }
 
 
-    @Qualifier("oneTimeDataTransmissionTrafficModel")
-    @Autowired
-    TrafficeModelService oneTimeDataTrasmissionTrafficeModel;
 
-    @Qualifier("staticPeriodicalDataTramsmission")
-    @Autowired
-    TrafficeModelService staticPeriodicalDataTramsmissionTrafficModel;
 
-    @Qualifier("regularRandomDataTransmission")
-    @Autowired
-    TrafficeModelService regularRandomDataTransmissionTrafficModel;
 
-    @Qualifier("smallDataShortIntervalTransmission")
-    @Autowired
-    TrafficeModelService smallDataShortIntervalTransmissionTrafficModel;
-
-    @Qualifier("smallDataRegularIntervalTransmission")
-    @Autowired
-    TrafficeModelService smallDataRegularIntervalTransmission;
-
-    private TrafficeModelService getTrafficModelService(String trafficModelCode){
-
-        if(trafficModelCode.equalsIgnoreCase("TM1")) {
-            return oneTimeDataTrasmissionTrafficeModel;
-        }
-
-        if(trafficModelCode.equalsIgnoreCase("TM2")) {
-            return staticPeriodicalDataTramsmissionTrafficModel;
-        }
-
-        if(trafficModelCode.equalsIgnoreCase("TM3")){
-            return regularRandomDataTransmissionTrafficModel;
-        }
-
-        if(trafficModelCode.equalsIgnoreCase("TM4")) {
-            return smallDataShortIntervalTransmissionTrafficModel;
-        }
-
-        if(trafficModelCode.equalsIgnoreCase("TM5")) {
-            return smallDataRegularIntervalTransmission;
-        }
-
-        return null;
-    }
 }

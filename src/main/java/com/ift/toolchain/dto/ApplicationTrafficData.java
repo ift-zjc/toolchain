@@ -6,4 +6,5 @@ import lombok.Data;
 public class ApplicationTrafficData {
     private long offsetMillionSecond;
     private float trafficVolumn;
+    private String timeString;
 }

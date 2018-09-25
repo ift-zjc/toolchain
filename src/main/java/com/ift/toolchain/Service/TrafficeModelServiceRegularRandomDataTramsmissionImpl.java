@@ -2,6 +2,7 @@ package com.ift.toolchain.Service;
 
 import com.ift.toolchain.dto.ApplicationTrafficData;
 import com.ift.toolchain.model.TrafficModelConfig;
+import org.joda.time.DateTime;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -13,7 +14,7 @@ import java.util.Random;
 @Service(value = "regularRandomDataTransmission")
 public class TrafficeModelServiceRegularRandomDataTramsmissionImpl implements TrafficeModelService {
     @Override
-    public List<ApplicationTrafficData> simulate(long startOffset, long endOffset, List<TrafficModelConfig> trafficModelConfigs) {
+    public List<ApplicationTrafficData> simulate(DateTime start, DateTime end, List<TrafficModelConfig> trafficModelConfigs) {
 
 
         List<ApplicationTrafficData> applicationTrafficDataList = new ArrayList<>();
@@ -28,13 +29,15 @@ public class TrafficeModelServiceRegularRandomDataTramsmissionImpl implements Tr
         trafficModelConfig = trafficModelConfigs.stream().filter(trafficModelConfig1 -> trafficModelConfig1.getName().equalsIgnoreCase("datavolumedelta")).findAny();
         int datavolumedelta = Integer.parseInt(trafficModelConfig.get().getValue());
 
-        for(long j = startOffset; j <= endOffset;  j += (new Random().nextGaussian()*(timeintervaldelta/1.85) + timeinterval)) {
+        while(start.compareTo(end) <0 ){
 
             ApplicationTrafficData applicationTrafficData = new ApplicationTrafficData();
-            applicationTrafficData.setOffsetMillionSecond(j);
+            applicationTrafficData.setTimeString(start.toString());
             applicationTrafficData.setTrafficVolumn(Float.parseFloat(String.valueOf(new Random().nextGaussian()*(datavolumedelta/1.85) + datavolume)));
 
             applicationTrafficDataList.add(applicationTrafficData);
+
+            start = start.plusSeconds((int) (new Random().nextGaussian()*(timeintervaldelta/1.85) + timeinterval));
         }
 
         return applicationTrafficDataList;

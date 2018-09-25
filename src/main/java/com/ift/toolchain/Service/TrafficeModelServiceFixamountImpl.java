@@ -4,6 +4,7 @@ import com.ift.toolchain.dto.ApplicationTrafficData;
 import com.ift.toolchain.dto.TmOptions;
 import com.ift.toolchain.model.TrafficModel;
 import com.ift.toolchain.model.TrafficModelConfig;
+import org.joda.time.DateTime;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -15,7 +16,7 @@ import java.util.List;
 public class TrafficeModelServiceFixamountImpl implements TrafficeModelService {
 
     @Override
-    public List<ApplicationTrafficData> simulate(long startOffset, long endOffset, List<TrafficModelConfig> trafficModelConfigs) {
+    public List<ApplicationTrafficData> simulate(DateTime startOffset, DateTime endOffset, List<TrafficModelConfig> trafficModelConfigs) {
         return null;
     }
 }

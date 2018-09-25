@@ -69,9 +69,8 @@ public class DataAccessController {
     @Autowired
     TleService tleService;
 
-
     @Autowired
-    TrafficeModelGenericService trafficeModelGenericService;
+    TrafficeModelGenericService trafficModelGenericService;
 
 
     /**
@@ -81,7 +80,7 @@ public class DataAccessController {
     @PostMapping(value = "/tmlist", produces = "application/json")
     @ResponseBody
     public String getTrafficeModelDataSource(){
-        return trafficeModelGenericService.getTMList();
+        return trafficModelGenericService.getTMList();
     }
 
 
@@ -93,7 +92,7 @@ public class DataAccessController {
     @PostMapping(value = "/tm/{key}", produces = "application/json")
     @ResponseBody
     public String getTrafficModelByKey(@PathVariable String key){
-        Optional<TrafficModel> trafficModel =  trafficeModelGenericService.getByCode(key);
+        Optional<TrafficModel> trafficModel =  trafficModelGenericService.getByCode(key);
 
         // Json String
         String response = "{";
@@ -126,7 +125,7 @@ public class DataAccessController {
     public List<ObjectDto> getAllObjects(){
         List<ObjectDto> objectDtos = new ArrayList<>();
         // Get satellites
-        List<Satellite> satellites = satelliteService.getAll();
+        List<Tle> satellites = tleService.getAllTles();
         // Get ground stations
         List<GroundStation> groundStations = groundStationService.getAll();
 
@@ -150,9 +149,9 @@ public class DataAccessController {
         ObjectDto objectDto;
 
         // Try to find satellite
-        Satellite satellite = satelliteService.findByName(key);
-        if(satellite != null){
-            objectDto = new ObjectDto(satellite.getId(), satellite.getName(), "Satellite");
+        Optional<Tle> satellite = tleService.findById(key);
+        if(satellite.isPresent()){
+            objectDto = new ObjectDto(satellite.get().getId(), satellite.get().getName(), "Satellite");
         }else{
             GroundStation groundStation = groundStationService.findByName(key);
             objectDto = new ObjectDto(groundStation.getId(), groundStation.getName(), "Ground station");
@@ -304,13 +303,15 @@ public class DataAccessController {
     }
 
     @PostMapping(value = "/simulation/start", consumes = "application/json")
-    public String startSimulator(@RequestBody Map<String, Object> payload) throws OrekitException {
+    public SimulateData startSimulator(@RequestBody Map<String, Object> payload) throws OrekitException {
 
         Autoconfiguration.configureOrekit();
         int step = 30;      // second
         float delta = 0.05f;  // 10%;
         String startTime = payload.get("timeStart").toString();
         String endTime = payload.get("timeEnd").toString();
+
+        List<HashMap<String, Object>> applicationDtos = (List<HashMap<String, Object>>) payload.get("appData");
 
         // Convert to datetime
         DateTime startDateTime = DateTime.parse(startTime);
@@ -399,7 +400,52 @@ public class DataAccessController {
             }
         }
 
-        return "complete";
+
+        /**
+         * Simulate application traffic model
+         */
+        List<ApplicationTraffic> applicationTraffics = new ArrayList<>();
+
+        for(HashMap<String, Object> hashMap : applicationDtos){
+            // Get current absolute date based on start time.
+            String _startTime = hashMap.get("startTime").toString();
+            String _endTime = hashMap.get("endTime").toString();
+            DateTime _start = DateTime.parse( _startTime);
+            DateTime _end = DateTime.parse(_endTime);
+
+            ApplicationTraffic applicationTraffic = new ApplicationTraffic();
+            applicationTraffic.setAppName(hashMap.get("name").toString());
+
+            // Get traffic model for this application.
+            HashMap<String, String> tmData =  (HashMap<String, String>)hashMap.get("tm");
+            String tmCode = tmData.get("code");
+            // Find traffic model
+            Optional<TrafficModel> trafficModel = trafficModelGenericService.getByCode(tmCode);
+            // Skip to next application if this application's traffic model is not presented.
+            if(!trafficModel.isPresent()){
+                continue;
+            }
+
+            TrafficModel trafficModelExtracted = trafficModel.get();
+            // Loop traffic model attributes and update if necessary
+            trafficModelExtracted.getTrafficModelConfigs().stream().forEach(tmConfig -> {
+                if(tmData.containsKey(tmConfig.getName())){
+                    tmConfig.setValue(String.valueOf(tmData.get(tmConfig.getName())));
+                }
+            });
+
+            TrafficeModelService trafficeModelService = this.getTrafficModelService(tmCode);
+
+            List<ApplicationTrafficData> applicationTrafficDataList = trafficeModelService.simulate(_start, _end, trafficModelExtracted.getTrafficModelConfigs());
+            applicationTraffic.setApplicationTrafficDataList(applicationTrafficDataList);
+            applicationTraffics.add(applicationTraffic);
+        }
+
+        SimulateData simulateData = new SimulateData();
+        simulateData.setSimulateResultDtos(null);
+        simulateData.setApplicationTraffic(applicationTraffics);
+
+        return simulateData;
     }
 
     /**
@@ -857,5 +903,50 @@ public class DataAccessController {
 
 //        return (Math.abs(angleCurrent - angleSecondAgo));
         return Math.abs(a2-a2SecondAgo);
+    }
+
+    @Qualifier("oneTimeDataTransmissionTrafficModel")
+    @Autowired
+    TrafficeModelService oneTimeDataTrasmissionTrafficeModel;
+
+    @Qualifier("staticPeriodicalDataTramsmission")
+    @Autowired
+    TrafficeModelService staticPeriodicalDataTramsmissionTrafficModel;
+
+    @Qualifier("regularRandomDataTransmission")
+    @Autowired
+    TrafficeModelService regularRandomDataTransmissionTrafficModel;
+
+    @Qualifier("smallDataShortIntervalTransmission")
+    @Autowired
+    TrafficeModelService smallDataShortIntervalTransmissionTrafficModel;
+
+    @Qualifier("smallDataRegularIntervalTransmission")
+    @Autowired
+    TrafficeModelService smallDataRegularIntervalTransmission;
+
+    private TrafficeModelService getTrafficModelService(String trafficModelCode){
+
+        if(trafficModelCode.equalsIgnoreCase("TM1")) {
+            return oneTimeDataTrasmissionTrafficeModel;
+        }
+
+        if(trafficModelCode.equalsIgnoreCase("TM2")) {
+            return staticPeriodicalDataTramsmissionTrafficModel;
+        }
+
+        if(trafficModelCode.equalsIgnoreCase("TM3")){
+            return regularRandomDataTransmissionTrafficModel;
+        }
+
+        if(trafficModelCode.equalsIgnoreCase("TM4")) {
+            return smallDataShortIntervalTransmissionTrafficModel;
+        }
+
+        if(trafficModelCode.equalsIgnoreCase("TM5")) {
+            return smallDataRegularIntervalTransmission;
+        }
+
+        return null;
     }
 }

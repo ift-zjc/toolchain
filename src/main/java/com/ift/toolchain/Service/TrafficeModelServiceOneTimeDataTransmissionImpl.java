@@ -4,6 +4,7 @@ import com.ift.toolchain.dto.ApplicationTrafficData;
 import com.ift.toolchain.dto.TmOptions;
 import com.ift.toolchain.model.TrafficModel;
 import com.ift.toolchain.model.TrafficModelConfig;
+import org.joda.time.DateTime;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -14,7 +15,7 @@ import java.util.Optional;
 public class TrafficeModelServiceOneTimeDataTransmissionImpl implements TrafficeModelService {
 
     @Override
-    public List<ApplicationTrafficData> simulate(long startOffset, long endOffset, List<TrafficModelConfig> trafficModelConfigs) {
+    public List<ApplicationTrafficData> simulate(DateTime start, DateTime end, List<TrafficModelConfig> trafficModelConfigs) {
         // Get parameter from trafficModelConfig
         Optional<TrafficModelConfig> trafficModelConfig = trafficModelConfigs.stream().filter(trafficModelConfig1 -> trafficModelConfig1.getName().equalsIgnoreCase("time")).findAny();
         long time = Long.parseLong(trafficModelConfig.get().getValue());
@@ -25,7 +26,8 @@ public class TrafficeModelServiceOneTimeDataTransmissionImpl implements Traffice
         ApplicationTrafficData applicationTrafficData = new ApplicationTrafficData();
         applicationTrafficData.setTrafficVolumn(dataVolumn);
         // Data transmite time is offset + time (when)
-        applicationTrafficData.setOffsetMillionSecond(startOffset + time);
+//        applicationTrafficData.setOffsetMillionSecond(startOffset + time);
+        applicationTrafficData.setTimeString(start.plusSeconds((int) time).toString());
 
         List<ApplicationTrafficData> trafficData = new ArrayList<>();
         trafficData.add(applicationTrafficData);

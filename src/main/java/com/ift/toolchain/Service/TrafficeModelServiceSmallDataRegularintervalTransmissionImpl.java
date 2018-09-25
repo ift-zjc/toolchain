@@ -3,6 +3,7 @@ package com.ift.toolchain.Service;
 import com.ift.toolchain.dto.ApplicationTrafficData;
 import com.ift.toolchain.model.TrafficModelConfig;
 import org.apache.commons.math3.distribution.ExponentialDistribution;
+import org.joda.time.DateTime;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -15,7 +16,7 @@ public class TrafficeModelServiceSmallDataRegularintervalTransmissionImpl implem
 
 
     @Override
-    public List<ApplicationTrafficData> simulate(long startOffset, long endOffset, List<TrafficModelConfig> trafficModelConfigs) {
+    public List<ApplicationTrafficData> simulate(DateTime start, DateTime end, List<TrafficModelConfig> trafficModelConfigs) {
 
 
         List<ApplicationTrafficData> applicationTrafficDataList = new ArrayList<>();
@@ -31,13 +32,14 @@ public class TrafficeModelServiceSmallDataRegularintervalTransmissionImpl implem
         // Exponential distribution generator
         ExponentialDistribution exponentialDistributionDataVolume = new ExponentialDistribution(datavolume);
 
-        for(long j = startOffset; j <= endOffset;  j += (new Random().nextGaussian()*(timeintervaldelta/1.85) + timeinterval)) {
-
+        while(start.compareTo(end) < 0 ){
             ApplicationTrafficData applicationTrafficData = new ApplicationTrafficData();
-            applicationTrafficData.setOffsetMillionSecond(j);
+            applicationTrafficData.setTimeString(start.toString());
             applicationTrafficData.setTrafficVolumn(Float.parseFloat(String.valueOf(exponentialDistributionDataVolume.sample())));
 
             applicationTrafficDataList.add(applicationTrafficData);
+
+            start = start.plusSeconds((int) (new Random().nextGaussian()*(timeintervaldelta/1.85) + timeinterval));
         }
 
         return applicationTrafficDataList;
