@@ -21,6 +21,7 @@ var connectedObjectPolylines;
 var connectedObjectPolylinesCurrent;
 
 var dgApplications;
+var chartApps;
 
 //Stations
 var afMonitorStations;
@@ -132,16 +133,16 @@ $(function(){
                 }
             }
         ]
-    })
-
+    });
     // Bing map key
     Cesium.BingMapsApi.defaultKey = 'Ak8mO9f0VpoByuNwmMcVvFka1GCZ3Bh8VrpqNLqGtIgsuUYjTrJdw7kDZwAwlC7E';
     terrainProvider = new Cesium.CesiumTerrainProvider({
         url : 'https://assets.agi.com/stk-terrain/world',
         requestVertexNormals : true
     });
+
     viewer = new Cesium.Viewer('cesiumContainer', {
-        terrainProvider : terrainProvider,
+        terrainProvider: terrainProvider,
         baseLayerPicker : false,
         shadows: true
     });
@@ -394,12 +395,16 @@ $(function(){
                              */
 
                             // Get all application data from datasource
-                            var dataArray = dsApplications.store()._array.slice(0);
+                            // var dataArray = dsApplications.store()._array.slice(0);
                             // Get min date
-                            var startDate = _.min(_.pluck(dataArray, 'startTime'));
-                            var endDate = _.max(_.pluck(dataArray, 'endTime'));
+                            // var startDate = _.min(_.pluck(dataArray, 'startTime'));
+                            // var endDate = _.max(_.pluck(dataArray, 'endTime'));
 
                                 // Construct datasource
+                            var dsTrafficChart = [];
+                            _.each(data.applicationTraffic, function(traffic){
+                                dsTrafficChart = dsTrafficChart.concat(traffic.applicationTrafficDataList);
+                            });
                             // var dsTrafficChart="[";
                             // for (var i = 0; i < 1000; i++){
                             //     // JSON string
@@ -434,51 +439,23 @@ $(function(){
                             //     var name = appTrafficS.appName;
                             //     seriesTraffic += '{"valueField": "' + name + '", "name": "' + name + '"},'
                             // });
+
+
                             //
                             // seriesTraffic = seriesTraffic.slice(0, -1) + "]";
                             // seriesTraffic = JSON.parse(seriesTraffic);
 
-                            chartApplications = $("#chartApps").dxChart({
-                                palette: "violet",
-                                dataSource: data.applicationTraffic,
-                                commonSeriesSettings: {
-                                    barPadding: 0.2,
-                                    argumentField: "applicationTrafficDataList.timeString",
-                                    type: "bar"
-                                },
-                                legend: {
-                                    verticalAlignment: "bottom",
-                                    horizontalAlignment: "center"
-                                },
-                                title: {
-                                    text: "Applications Traffic",
-                                    font: {
-                                        color: "white"
-                                    }
-                                }
-                                // series: seriesTraffic,
-                                // argumentAxis: {
-                                //     argumentType: 'number',
-                                //     label: {
-                                //         customizeText: function(obj) {
-                                //             var currentTime = Cesium.JulianDate.clone(viewer.clock.startTime);
-                                //             currentTime = Cesium.JulianDate.addSeconds(simulatorStartDateTime, obj.value, currentTime);
-                                //             return moment(Cesium.JulianDate.toDate(currentTime).toISOString()).format('MMMM Do YYYY, h:mm:ss a');
-                                //         },
-                                //         font:{
-                                //             color: '#57962B'
-                                //         }
-                                //     }
-                                // },
-                                // onLegendClick: function (e) {
-                                //     var series = e.target;
-                                //     if (series.isVisible()) {
-                                //         series.hide();
-                                //     } else {
-                                //         series.show();
-                                //     }
-                                // }
-                            });
+                            // dsTrafficChart = JSON.stringify(dsTrafficChart);
+                            // var dsRaw = dsTrafficChart.replace('[[','[').replace(']]',']');
+                            // var ds = new DevExpress.data.DataSource({
+                            //     store: {
+                            //         type: "local",
+                            //         name: "MyLocalData",
+                            //         key: "appName",
+                            //         data: dsTrafficChart
+                            //     }
+                            // });
+                            chartApps.option('dataSource', dsTrafficChart);
                         },
                         error: function (data){
 
@@ -542,6 +519,7 @@ $(function(){
     initWebsocket();
     initLayoutEvent();
 });
+
 
 function initSatelliteStatusGrid(){
 
@@ -978,6 +956,52 @@ function initApplicationComponents(){
             }
         }
     }).dxDataGrid("instance");
+
+    chartApps = $("#chartApps").dxChart({
+        palette: "soft",
+        commonSeriesSettings: {
+            argumentField: "timeString",
+            valueField: "trafficVolumn",
+            barPadding: 0.2,
+            type: "bar"
+        },argumentAxis: {
+            argumentType: 'datetime'
+        },
+        legend: {
+            verticalAlignment: "bottom",
+            horizontalAlignment: "center"
+        },
+        title: {
+            text: "Applications Traffic",
+            font: {
+                color: "white"
+            }
+        },
+        seriesTemplate: {
+            nameField: "appName"
+        }
+        // argumentAxis: {
+        //     argumentType: 'number',
+        //     label: {
+        //         customizeText: function(obj) {
+        //             var currentTime = Cesium.JulianDate.clone(viewer.clock.startTime);
+        //             currentTime = Cesium.JulianDate.addSeconds(simulatorStartDateTime, obj.value, currentTime);
+        //             return moment(Cesium.JulianDate.toDate(currentTime).toISOString()).format('MMMM Do YYYY, h:mm:ss a');
+        //         },
+        //         font:{
+        //             color: '#57962B'
+        //         }
+        //     }
+        // },
+        // onLegendClick: function (e) {
+        //     var series = e.target;
+        //     if (series.isVisible()) {
+        //         series.hide();
+        //     } else {
+        //         series.show();
+        //     }
+        // }
+    }).dxChart('instance');
 }
 
 /**

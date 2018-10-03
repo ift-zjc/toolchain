@@ -13,7 +13,7 @@ import java.util.Optional;
 @Service(value = "smallDataShortIntervalTransmission")
 public class TrafficeModelServiceISmallDataShortIntervalTransmissionImpl implements TrafficeModelService {
     @Override
-    public List<ApplicationTrafficData> simulate(DateTime startTime, DateTime endTime, List<TrafficModelConfig> trafficModelConfigs) {
+    public List<ApplicationTrafficData> simulate(DateTime startTime, DateTime endTime, List<TrafficModelConfig> trafficModelConfigs, String appName) {
         List<ApplicationTrafficData> applicationTrafficDataList = new ArrayList<>();
 
         // Get timeinterval & data volume
@@ -31,6 +31,7 @@ public class TrafficeModelServiceISmallDataShortIntervalTransmissionImpl impleme
             ApplicationTrafficData applicationTrafficData = new ApplicationTrafficData();
             applicationTrafficData.setTimeString(startTime.toString());
             applicationTrafficData.setTrafficVolumn(Float.parseFloat(String.valueOf(exponentialDistributionDataVolume.sample())));
+            applicationTrafficData.setAppName(appName);
 
             applicationTrafficDataList.add(applicationTrafficData);
 

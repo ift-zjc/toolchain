@@ -16,7 +16,7 @@ import java.util.List;
 public class TrafficeModelServiceFixamountImpl implements TrafficeModelService {
 
     @Override
-    public List<ApplicationTrafficData> simulate(DateTime startOffset, DateTime endOffset, List<TrafficModelConfig> trafficModelConfigs) {
+    public List<ApplicationTrafficData> simulate(DateTime startOffset, DateTime endOffset, List<TrafficModelConfig> trafficModelConfigs, String appName) {
         return null;
     }
 }

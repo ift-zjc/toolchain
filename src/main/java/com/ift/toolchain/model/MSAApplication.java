@@ -3,9 +3,10 @@ package com.ift.toolchain.model;
 import lombok.Data;
 import org.hibernate.annotations.GenericGenerator;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
+
+
+import javax.persistence.*;
+import java.util.Date;
 
 @Entity
 @Data
@@ -16,7 +17,13 @@ public class MSAApplication {
     @GenericGenerator(name="system-uuid", strategy = "org.hibernate.id.UUIDGenerator")
     private String id;
     private String appName;
-    private String sourceId;
-    private String destId;
-    private String defalutAppModule;
+
+    private String sourceObj;
+    private String destObj;
+    private String trafficModelCode;
+    private Date startTime;
+    private Date endTime;
+
+    @Lob
+    private String trafficModelConfig;
 }

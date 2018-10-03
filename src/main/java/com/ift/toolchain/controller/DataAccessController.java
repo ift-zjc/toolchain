@@ -11,6 +11,7 @@ import org.hipparchus.ode.nonstiff.AdaptiveStepsizeIntegrator;
 import org.hipparchus.ode.nonstiff.DormandPrince853Integrator;
 import org.hipparchus.util.FastMath;
 import org.joda.time.DateTime;
+import org.json.simple.JSONObject;
 import org.orekit.errors.OrekitException;
 import org.orekit.estimation.measurements.InterSatellitesRange;
 import org.orekit.forces.ForceModel;
@@ -71,6 +72,8 @@ public class DataAccessController {
 
     @Autowired
     TrafficeModelGenericService trafficModelGenericService;
+    @Autowired
+    MSApplicationService msApplicationService;
 
 
     /**
@@ -325,8 +328,10 @@ public class DataAccessController {
         KeplerianPropagator propagator1;
         KeplerianPropagator propagator2;
 
-        // Remove all messages before start
+        // Remove all messageses/msa application settings before start
         messageHubService.removeAll();
+        msApplicationService.removeAll();
+
 
         for (int i = 0; i<tleDtos.size()-1; i++){
             Orbit orbit1Init = this.getInitialOrb(tleDtos.get(i));
@@ -412,9 +417,10 @@ public class DataAccessController {
             String _endTime = hashMap.get("endTime").toString();
             DateTime _start = DateTime.parse( _startTime);
             DateTime _end = DateTime.parse(_endTime);
+            String appName = hashMap.get("name").toString();
 
             ApplicationTraffic applicationTraffic = new ApplicationTraffic();
-            applicationTraffic.setAppName(hashMap.get("name").toString());
+            applicationTraffic.setAppName(appName);
 
             // Get traffic model for this application.
             HashMap<String, String> tmData =  (HashMap<String, String>)hashMap.get("tm");
@@ -426,6 +432,17 @@ public class DataAccessController {
                 continue;
             }
 
+            // Save to database before proc.
+            MSAApplication msaApplication = new MSAApplication();
+            msaApplication.setAppName(appName);
+            msaApplication.setStartTime(_start.toDate());
+            msaApplication.setEndTime(_end.toDate());
+            msaApplication.setSourceObj(hashMap.get("source").toString());
+            msaApplication.setDestObj(hashMap.get("dest").toString());
+            msaApplication.setTrafficModelCode(tmCode);
+            msaApplication.setTrafficModelConfig((new JSONObject(tmData)).toJSONString());
+            msApplicationService.add(msaApplication);
+
             TrafficModel trafficModelExtracted = trafficModel.get();
             // Loop traffic model attributes and update if necessary
             trafficModelExtracted.getTrafficModelConfigs().stream().forEach(tmConfig -> {
@@ -436,7 +453,7 @@ public class DataAccessController {
 
             TrafficeModelService trafficeModelService = this.getTrafficModelService(tmCode);
 
-            List<ApplicationTrafficData> applicationTrafficDataList = trafficeModelService.simulate(_start, _end, trafficModelExtracted.getTrafficModelConfigs());
+            List<ApplicationTrafficData> applicationTrafficDataList = trafficeModelService.simulate(_start, _end, trafficModelExtracted.getTrafficModelConfigs(), applicationTraffic.getAppName());
             applicationTraffic.setApplicationTrafficDataList(applicationTrafficDataList);
             applicationTraffics.add(applicationTraffic);
         }

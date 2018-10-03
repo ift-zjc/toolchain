@@ -15,7 +15,7 @@ import java.util.Optional;
 public class TrafficeModelServiceOneTimeDataTransmissionImpl implements TrafficeModelService {
 
     @Override
-    public List<ApplicationTrafficData> simulate(DateTime start, DateTime end, List<TrafficModelConfig> trafficModelConfigs) {
+    public List<ApplicationTrafficData> simulate(DateTime start, DateTime end, List<TrafficModelConfig> trafficModelConfigs, String appName) {
         // Get parameter from trafficModelConfig
         Optional<TrafficModelConfig> trafficModelConfig = trafficModelConfigs.stream().filter(trafficModelConfig1 -> trafficModelConfig1.getName().equalsIgnoreCase("time")).findAny();
         long time = Long.parseLong(trafficModelConfig.get().getValue());
@@ -28,6 +28,7 @@ public class TrafficeModelServiceOneTimeDataTransmissionImpl implements Traffice
         // Data transmite time is offset + time (when)
 //        applicationTrafficData.setOffsetMillionSecond(startOffset + time);
         applicationTrafficData.setTimeString(start.plusSeconds((int) time).toString());
+        applicationTrafficData.setAppName(appName);
 
         List<ApplicationTrafficData> trafficData = new ArrayList<>();
         trafficData.add(applicationTrafficData);

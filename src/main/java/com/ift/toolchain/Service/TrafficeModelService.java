@@ -9,5 +9,5 @@ import org.joda.time.DateTime;
 import java.util.List;
 
 public interface TrafficeModelService {
-    List<ApplicationTrafficData> simulate(DateTime startTime, DateTime endTime, List<TrafficModelConfig> trafficModelConfigs);
+    List<ApplicationTrafficData> simulate(DateTime startTime, DateTime endTime, List<TrafficModelConfig> trafficModelConfigs, String appName);
 }

@@ -16,7 +16,7 @@ public class TrafficeModelServiceSmallDataRegularintervalTransmissionImpl implem
 
 
     @Override
-    public List<ApplicationTrafficData> simulate(DateTime start, DateTime end, List<TrafficModelConfig> trafficModelConfigs) {
+    public List<ApplicationTrafficData> simulate(DateTime start, DateTime end, List<TrafficModelConfig> trafficModelConfigs, String appName) {
 
 
         List<ApplicationTrafficData> applicationTrafficDataList = new ArrayList<>();
@@ -36,6 +36,7 @@ public class TrafficeModelServiceSmallDataRegularintervalTransmissionImpl implem
             ApplicationTrafficData applicationTrafficData = new ApplicationTrafficData();
             applicationTrafficData.setTimeString(start.toString());
             applicationTrafficData.setTrafficVolumn(Float.parseFloat(String.valueOf(exponentialDistributionDataVolume.sample())));
+            applicationTrafficData.setAppName(appName);
 
             applicationTrafficDataList.add(applicationTrafficData);
 

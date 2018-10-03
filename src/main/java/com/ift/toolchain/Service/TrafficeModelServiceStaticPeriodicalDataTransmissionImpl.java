@@ -12,7 +12,7 @@ import java.util.Optional;
 @Service(value = "staticPeriodicalDataTramsmission")
 public class TrafficeModelServiceStaticPeriodicalDataTransmissionImpl implements TrafficeModelService {
     @Override
-    public List<ApplicationTrafficData> simulate(DateTime start, DateTime end, List<TrafficModelConfig> trafficModelConfigs) {
+    public List<ApplicationTrafficData> simulate(DateTime start, DateTime end, List<TrafficModelConfig> trafficModelConfigs, String appName) {
 
         List<ApplicationTrafficData> applicationTrafficDataList = new ArrayList<>();
 
@@ -28,6 +28,7 @@ public class TrafficeModelServiceStaticPeriodicalDataTransmissionImpl implements
             ApplicationTrafficData applicationTrafficData = new ApplicationTrafficData();
             applicationTrafficData.setTimeString(start.toString());
             applicationTrafficData.setTrafficVolumn(datavolume);
+            applicationTrafficData.setAppName(appName);
 
             applicationTrafficDataList.add(applicationTrafficData);
 

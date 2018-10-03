@@ -14,7 +14,7 @@ import java.util.Random;
 @Service(value = "regularRandomDataTransmission")
 public class TrafficeModelServiceRegularRandomDataTramsmissionImpl implements TrafficeModelService {
     @Override
-    public List<ApplicationTrafficData> simulate(DateTime start, DateTime end, List<TrafficModelConfig> trafficModelConfigs) {
+    public List<ApplicationTrafficData> simulate(DateTime start, DateTime end, List<TrafficModelConfig> trafficModelConfigs, String appName) {
 
 
         List<ApplicationTrafficData> applicationTrafficDataList = new ArrayList<>();
@@ -34,6 +34,7 @@ public class TrafficeModelServiceRegularRandomDataTramsmissionImpl implements Tr
             ApplicationTrafficData applicationTrafficData = new ApplicationTrafficData();
             applicationTrafficData.setTimeString(start.toString());
             applicationTrafficData.setTrafficVolumn(Float.parseFloat(String.valueOf(new Random().nextGaussian()*(datavolumedelta/1.85) + datavolume)));
+            applicationTrafficData.setAppName(appName);
 
             applicationTrafficDataList.add(applicationTrafficData);
 
