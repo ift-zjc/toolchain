@@ -21,6 +21,7 @@ public class MSAApplication {
     private String sourceObj;
     private String destObj;
     private String trafficModelCode;
+    private String protocol;
     private Date startTime;
     private Date endTime;
 

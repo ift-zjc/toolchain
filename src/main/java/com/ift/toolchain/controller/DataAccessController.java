@@ -435,6 +435,7 @@ public class DataAccessController {
             // Save to database before proc.
             MSAApplication msaApplication = new MSAApplication();
             msaApplication.setAppName(appName);
+            msaApplication.setProtocol(hashMap.get("protocol").toString());
             msaApplication.setStartTime(_start.toDate());
             msaApplication.setEndTime(_end.toDate());
             msaApplication.setSourceObj(hashMap.get("source").toString());

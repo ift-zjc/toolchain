@@ -334,14 +334,18 @@ $(function(){
                     });
                 }
             }
-        },{
+        }]
+    });
+
+    $('#toolbarSimulator').dxToolbar({
+        items: [{
             template: function () {
                 return $('<span class="h6">Start time&nbsp;</span>');
             },
-            location: 'after'
+            location: 'before'
 
         },{
-            location: 'after',
+            location: 'before',
             widget: 'dxDateBox',
             options: {
                 type: 'datetime',
@@ -354,9 +358,9 @@ $(function(){
             template: function () {
                 return $('<span class="h6">End time&nbsp;</span>');
             },
-            location: 'after'
+            location: 'before'
         },{
-            location: 'after',
+            location: 'before',
             widget: 'dxDateBox',
             options: {
                 type: 'datetime',
@@ -366,7 +370,7 @@ $(function(){
                 },
             }
         },{
-            location: 'after',
+            location: 'before',
             widget: 'dxButton',
             options: {
                 text: 'Start simulation',
@@ -394,11 +398,11 @@ $(function(){
                              * Application traffic chart
                              */
 
-                            // Get all application data from datasource
-                            // var dataArray = dsApplications.store()._array.slice(0);
-                            // Get min date
-                            // var startDate = _.min(_.pluck(dataArray, 'startTime'));
-                            // var endDate = _.max(_.pluck(dataArray, 'endTime'));
+                                // Get all application data from datasource
+                                // var dataArray = dsApplications.store()._array.slice(0);
+                                // Get min date
+                                // var startDate = _.min(_.pluck(dataArray, 'startTime'));
+                                // var endDate = _.max(_.pluck(dataArray, 'endTime'));
 
                                 // Construct datasource
                             var dsTrafficChart = [];
@@ -467,11 +471,7 @@ $(function(){
                 }
             }
         }]
-    });
-
-    // $('#toolbarSimulator').dxToolbar({
-    //     items: []
-    // })
+    })
 
     // File uploader
     fileUploader = $('#fileUploader').dxFileUploader({
