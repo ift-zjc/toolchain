@@ -34,7 +34,7 @@ public class StorageServiceImpl implements StorageService {
 
     public StorageServiceImpl() {
 //        this.rootLocation = Paths.get("c:\\upload-dir\\").toAbsolutePath().normalize();
-        this.rootLocation = Paths.get("/home/cloud_ift/upload-dir", "satellite-data.txt");
+        this.rootLocation = Paths.get("/home/cloud_ift/upload-dir").toAbsolutePath().normalize();
     }
 
 
