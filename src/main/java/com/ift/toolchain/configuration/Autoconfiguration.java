@@ -38,6 +38,7 @@ public class Autoconfiguration {
         appendIfExists(pathBuffer, new File(home,    "orekit-data"));
         appendIfExists(pathBuffer, new File(home,    ".orekit-data"));
         appendIfExists(pathBuffer, "regular-data");
+        appendIfExists(pathBuffer, "/hoe/cloud_ift");
         System.setProperty(DataProvidersManager.OREKIT_DATA_PATH, pathBuffer.toString());
     }
     /** Append a directory/zip archive to the path if it exists.
