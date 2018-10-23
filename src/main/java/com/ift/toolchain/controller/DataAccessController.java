@@ -397,6 +397,8 @@ public class DataAccessController {
          */
         List<ApplicationTraffic> applicationTraffics = new ArrayList<>();
 
+        // TODO write JSON to file system with (new ObjectMapper()).writeValueAsString(applicationDtos), then provide a link for user to download.
+
         for(HashMap<String, Object> hashMap : applicationDtos){
             // Get current absolute date based on start time.
             String _startTime = hashMap.get("startTime").toString();

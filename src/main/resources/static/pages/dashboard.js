@@ -954,6 +954,29 @@ function initApplicationComponents(){
             if(!_.isUndefined(tmObject)) {
                 dsApplications.store().byKey(e.key).done(function(_item){_item.tm = tmObject;});
             }
+        },
+        onToolbarPreparing: function(e) {
+            var dataGrid = e.component;
+
+            e.toolbarOptions.items.unshift({
+                location: "after",
+                widget: "dxButton",
+                options: {
+                    icon: "arrowdown",
+                    disabled: false,
+                    onClick: function(){
+                        if( dsApplications._totalCount == 0 ){
+                        }else {
+                            // get underlayer data.
+                            var obj = JSON.stringify(dsApplications._items);
+                            download(obj, 'AppConfig.json', 'application/json');
+                        }
+                    },
+                    elementAttr: {
+                        id: 'btnDownloadJson'
+                    },
+                }
+            });
         }
     }).dxDataGrid("instance");
 
@@ -1293,4 +1316,17 @@ function addGroundStation(gsId, cartesian3, name){
         })
 
     });
+}
+/**
+ * Allow download file from Javascript
+ * @param content
+ * @param fileName
+ * @param contentType
+ */
+function download(content, fileName, contentType) {
+    var a = document.createElement("a");
+    var file = new Blob([content], {type: contentType});
+    a.href = URL.createObjectURL(file);
+    a.download = fileName;
+    a.click();
 }
