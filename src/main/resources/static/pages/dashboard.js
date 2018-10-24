@@ -4,7 +4,9 @@ var maxAngularVelocity = 0.000087;
 
 var viewer;
 var fileUploader;
+var appFileUploader;
 var popupFileUploader;
+var popupAppFileUploader;
 var popupAddSatellite;
 var progressBar;
 var toolbar;
@@ -42,11 +44,62 @@ $(function(){
         height: '400px',
         width: '600px',
         deferRendering: false,
-        title: 'Upload TLE and JSON Configuration file',
+        title: 'Upload TLE file',
         onHiding: function(){
             fileUploader.reset();
         }
     }).dxPopup("instance");
+
+    popupAppFileUploader = $("#popupAppFileUploader").dxPopup({
+        height: '220px',
+        width: '600px',
+        deferRendering: false,
+        title: 'Upload JSON Configuration file',
+        onHiding: function(){
+            appFileUploader.reset();
+        }
+    }).dxPopup("instance");
+
+    appFileUploader = $("#appFileUploader").dxFileUploader({
+        selectButtonText: "Select JSON config file",
+        labelText: "",
+        accept: "*",
+        uploadUrl: "/api/file/dummyupload",
+        onValueChanged: function (e) {
+            var files = e.value; // FileList object
+            // Loop through the FileList
+            for (var i = 0, f; f = files[i]; i++) {
+                var reader = new FileReader();
+                // Closure to capture the file information.
+                reader.onload = (function(theFile) {
+                    return function(evt) {
+                        // Print the contents of the file
+                        var jsonStr = evt.target.result;
+                        var jsonObj = JSON.parse(jsonStr);
+                        _.each(jsonObj, function(app){
+                            // Update the app source and destination.
+                            var sourceName = app.source;
+                            var destName = app.dest;
+
+                            $.get("/api/satellite/getidbyname/"+sourceName, function(data){
+                                app.source = data;
+                                $.get("/api/satellite/getidbyname/"+destName, function(data){
+                                    app.dest = data;
+                                    dsApplications.store().insert(app);
+                                });
+                            });
+                        });
+
+                        dsApplications.reload();
+                    };
+                })(f);
+                // Read in the file
+                //reader.readAsDataText(f,UTF-8);
+                //reader.readAsDataURL(f);
+                reader.readAsText(f);
+            }
+        }
+    }).dxFileUploader('instance');
 
     popupAddSatellite = $('#addSatellitePopup').dxPopup({
         height: '350px',
@@ -638,8 +691,10 @@ function initApplicationComponents(){
         onChanged: function(){
             if(dsApplications.totalCount() > 0){
                 $('#btnStartSimulation').dxButton('instance').option('disabled', false);
+                $('#btnDownloadJson').dxButton('instance').option('disabled', false);
             }else{
                 $('#btnStartSimulation').dxButton('instance').option('disabled', true);
+                $('#btnDownloadJson').dxButton('instance').option('disabled', false);
             }
         }
     });
@@ -886,8 +941,6 @@ function initApplicationComponents(){
 
                         selectedTMItem = editors.tmCode.option("selectedItem");
 
-
-
                         if (!_.isUndefined(tmObject) && !_.isNull(tmObject) && selectedTMItem.code == tmObject.code){
                             formData = tmObject;
                         }else{
@@ -959,16 +1012,27 @@ function initApplicationComponents(){
             var dataGrid = e.component;
 
             e.toolbarOptions.items.unshift({
-                location: "after",
+                location: "before",
+                widget: "dxButton",
+                options: {
+                    icon: "upload",
+                    hint: "Upload App Model Conf File",
+                    onClick: function(){
+                        popupAppFileUploader.show();
+                    }
+                }
+            },{
+                location: "before",
                 widget: "dxButton",
                 options: {
                     icon: "arrowdown",
-                    disabled: false,
+                    disabled: true,
+                    hint: "Download Application Model",
                     onClick: function(){
-                        if( dsApplications._totalCount == 0 ){
+                        if( dsApplications.totalCount() == 0 ){
                         }else {
                             // get underlayer data.
-                            var obj = JSON.stringify(dsApplications._items);
+                            var obj = JSON.stringify(dsApplications.items());
                             download(obj, 'AppConfig.json', 'application/json');
                         }
                     },
@@ -1329,4 +1393,33 @@ function download(content, fileName, contentType) {
     a.href = URL.createObjectURL(file);
     a.download = fileName;
     a.click();
+}
+
+/**
+ * Handle file read event
+ * @param evt
+ */
+function handleFileSelect(evt) {
+    var files = evt.target.files; // FileList object
+
+    // Loop through the FileList
+    for (var i = 0, f; f = files[i]; i++) {
+
+        var reader = new FileReader();
+
+        // Closure to capture the file information.
+        reader.onload = (function(theFile) {
+            return function(e) {
+                // Print the contents of the file
+                var span = document.createElement('span');
+                span.innerHTML = ['<p>',e.target.result,'</p>'].join('');
+                document.getElementById('list').insertBefore(span, null);
+            };
+        })(f);
+
+        // Read in the file
+        //reader.readAsDataText(f,UTF-8);
+        //reader.readAsDataURL(f);
+        reader.readAsText(f);
+    }
 }

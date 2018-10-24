@@ -150,6 +150,9 @@ public class DataAccessController {
     }
 
 
+    /**
+     * Update file
+     */
     @Autowired
     StorageService storageService;
     @PostMapping("/file/upload")
@@ -190,6 +193,16 @@ public class DataAccessController {
 
             }
         });
+    }
+
+    /**
+     * Nothing happens here.
+     *
+     * @param files
+     */
+    @PostMapping("/file/dummyupload")
+    public void handleDummyFileUpload(@RequestParam("files[]") MultipartFile[] files){
+
     }
 
     private final String categoryId = "GPS_SATELLITES";
@@ -572,6 +585,22 @@ public class DataAccessController {
         selectedSatelliteDto.setSatelliteXSatellites(satelliteXSatellites);
         return selectedSatelliteDto;
 
+    }
+
+    /**
+     * Get satellite id by name.
+     * @param name
+     * @return
+     */
+    @GetMapping("/satellite/getidbyname/{name}")
+    public String getObjectIdByName(@PathVariable("name") String name){
+
+        Tle tle = tleService.getByName(name);
+        if(tle != null) {
+            return tle.getId();
+        }
+
+        return "N/A";
     }
 
 
