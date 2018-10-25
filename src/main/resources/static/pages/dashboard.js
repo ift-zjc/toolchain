@@ -1033,17 +1033,12 @@ function initApplicationComponents(){
                         }else {
                             // get underlayer data.
                             var obj = JSON.stringify(dsApplications.items());
-                            var replaceDeferred = replaceDownloadFileId2Name(obj);
-                            replaceDeferred.then(function(result){
-                                download(obj, 'AppConfig.json', 'application/json');
-                            }, function (result) {
-
-                            });
+                            download(obj, 'AppConfig.json', 'application/json');
                         }
                     },
                     elementAttr: {
                         id: 'btnDownloadJson'
-                    },
+                    }
                 }
             });
         }
