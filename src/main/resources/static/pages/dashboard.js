@@ -86,11 +86,11 @@ $(function(){
                                 $.get("/api/satellite/getidbyname/"+destName, function(data){
                                     app.dest = data;
                                     dsApplications.store().insert(app);
+
+                                    dsApplications.reload();
                                 });
                             });
                         });
-
-                        dsApplications.reload();
                     };
                 })(f);
                 // Read in the file
@@ -1033,7 +1033,12 @@ function initApplicationComponents(){
                         }else {
                             // get underlayer data.
                             var obj = JSON.stringify(dsApplications.items());
-                            download(obj, 'AppConfig.json', 'application/json');
+                            var replaceDeferred = replaceDownloadFileId2Name(obj);
+                            replaceDeferred.then(function(result){
+                                download(obj, 'AppConfig.json', 'application/json');
+                            }, function (result) {
+
+                            });
                         }
                     },
                     elementAttr: {
@@ -1422,4 +1427,10 @@ function handleFileSelect(evt) {
         //reader.readAsDataURL(f);
         reader.readAsText(f);
     }
+}
+
+function replaceDownloadFileId2Name(obj){
+    var deferred = $.Deferred();
+
+    return deferred.promise();
 }

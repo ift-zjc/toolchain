@@ -304,6 +304,12 @@ public class DataAccessController {
         return satellitePopulated;
     }
 
+    /**
+     * Start simulator
+     * @param payload
+     * @return
+     * @throws OrekitException
+     */
     @PostMapping(value = "/simulation/start", consumes = "application/json")
     public SimulateData startSimulator(@RequestBody Map<String, Object> payload) throws OrekitException {
 
