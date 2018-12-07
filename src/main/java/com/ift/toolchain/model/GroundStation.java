@@ -20,6 +20,9 @@ public class GroundStation {
 
     private String name;
     private String stationId;   // User defined
+    private double x;
+    private double y;
+    private double z;
 
     @OneToMany(mappedBy = "groundStation")
     private List<Parameter> stationParams;

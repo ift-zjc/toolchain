@@ -2,9 +2,13 @@ package com.ift.toolchain.controller;
 
 import com.ift.toolchain.Service.*;
 import com.ift.toolchain.configuration.Autoconfiguration;
+import com.ift.toolchain.dijkstra.Dijkstra;
+import com.ift.toolchain.dijkstra.Graph;
+import com.ift.toolchain.dijkstra.Node;
 import com.ift.toolchain.dto.*;
 import com.ift.toolchain.dto.SatelliteXSatellite;
 import com.ift.toolchain.model.*;
+import com.sun.org.apache.xpath.internal.operations.Lte;
 import org.hipparchus.geometry.euclidean.threed.Vector3D;
 import org.hipparchus.util.FastMath;
 import org.joda.time.DateTime;
@@ -60,32 +64,36 @@ public class DataAccessController {
     TrafficeModelGenericService trafficModelGenericService;
     @Autowired
     MSApplicationService msApplicationService;
+    @Autowired
+    AppTrafficDataService appTrafficDataService;
 
 
     /**
      * Get traffic model datagrid source
+     *
      * @return
      */
     @PostMapping(value = "/tmlist", produces = "application/json")
     @ResponseBody
-    public String getTrafficeModelDataSource(){
+    public String getTrafficeModelDataSource() {
         return trafficModelGenericService.getTMList();
     }
 
 
     /**
      * Get Traffic Model by ID
+     *
      * @param key
      * @return
      */
     @PostMapping(value = "/tm/{key}", produces = "application/json")
     @ResponseBody
-    public String getTrafficModelByKey(@PathVariable String key){
-        Optional<TrafficModel> trafficModel =  trafficModelGenericService.getByCode(key);
+    public String getTrafficModelByKey(@PathVariable String key) {
+        Optional<TrafficModel> trafficModel = trafficModelGenericService.getByCode(key);
 
         // Json String
         String response = "{";
-        if(trafficModel.isPresent()){
+        if (trafficModel.isPresent()) {
             TrafficModel model = trafficModel.get();
             response += "\"name\":\"" + model.getName() + "\",";
             response += "\"code\":\"" + model.getCode() + "\",";
@@ -93,12 +101,12 @@ public class DataAccessController {
 
             // Get configuration
             List<TrafficModelConfig> trafficModelConfigs = model.getTrafficModelConfigs();
-            for(TrafficModelConfig config : trafficModelConfigs){
+            for (TrafficModelConfig config : trafficModelConfigs) {
                 response += "\"" + config.getName() + "\": \"" + config.getValue() + "\",";
             }
         }
 
-        response = response.substring(0, response.length()-1);
+        response = response.substring(0, response.length() - 1);
 
         response += "}";
 
@@ -108,10 +116,11 @@ public class DataAccessController {
 
     /**
      * Get object list
+     *
      * @return
      */
     @GetMapping(value = "/objectlist", produces = "application/json")
-    public List<ObjectDto> getAllObjects(){
+    public List<ObjectDto> getAllObjects() {
         List<ObjectDto> objectDtos = new ArrayList<>();
         // Get satellites
         List<Tle> satellites = tleService.getAllTles();
@@ -133,15 +142,15 @@ public class DataAccessController {
 
     @PostMapping(value = "/object/{key}")
     @ResponseBody
-    public ObjectDto getObjectById(@PathVariable String key){
+    public ObjectDto getObjectById(@PathVariable String key) {
 
         ObjectDto objectDto;
 
         // Try to find satellite
         Optional<Tle> satellite = tleService.findById(key);
-        if(satellite.isPresent()){
+        if (satellite.isPresent()) {
             objectDto = new ObjectDto(satellite.get().getId(), satellite.get().getName(), "Satellite");
-        }else{
+        } else {
             GroundStation groundStation = groundStationService.findByName(key);
             objectDto = new ObjectDto(groundStation.getId(), groundStation.getName(), "Ground station");
         }
@@ -155,8 +164,9 @@ public class DataAccessController {
      */
     @Autowired
     StorageService storageService;
+
     @PostMapping("/file/upload")
-    public void handleFileUpload(@RequestParam("files[]") MultipartFile[] files){
+    public void handleFileUpload(@RequestParam("files[]") MultipartFile[] files) {
         // manipulate file name
         // Save to storage
         Arrays.stream(files).forEach(file -> {
@@ -167,7 +177,7 @@ public class DataAccessController {
 //            ConfigFile tleFile= configFileService.getConfigFile("TLE");
             Path path = storageService.load(filename);
             List<String> tleList = new ArrayList<>();
-            try (Stream<String> stream = Files.lines(path)){
+            try (Stream<String> stream = Files.lines(path)) {
                 tleList = stream.collect(Collectors.toList());
             } catch (IOException e) {
                 e.printStackTrace();
@@ -183,10 +193,10 @@ public class DataAccessController {
 
             int satelliteCnt = tleDtos.size();
             float index = 1f;
-            for(Tle item : tleDtos){
-                try{
+            for (Tle item : tleDtos) {
+                try {
                     tleService.save(item);
-                }catch(Exception ex){
+                } catch (Exception ex) {
                     // TODO handle DB exception, ignore now.
                     // Database error, most for duplicated record
                 }
@@ -201,7 +211,7 @@ public class DataAccessController {
      * @param files
      */
     @PostMapping("/file/dummyupload")
-    public void handleDummyFileUpload(@RequestParam("files[]") MultipartFile[] files){
+    public void handleDummyFileUpload(@RequestParam("files[]") MultipartFile[] files) {
 
     }
 
@@ -213,7 +223,7 @@ public class DataAccessController {
     ConfigFileService configFileService;
 
     @PostMapping("/simulation/populateobjects")
-    public SatellitePopulated populateobjects() throws Exception{
+    public SatellitePopulated populateobjects() throws Exception {
 
         sendMessage("Start reading TLE data ...", 1f);
 
@@ -233,11 +243,11 @@ public class DataAccessController {
 
         int satelliteCnt = tleDtos.size();
         float index = 1f;
-        for(Tle item : tleDtos){
+        for (Tle item : tleDtos) {
 
             satelliteItems.add(new SatelliteItem(UUID.randomUUID().toString(), item.getName(), false, categoryId));
 
-            sendMessage("Generating satellite data (" + item.getName() +  ") ...", 11f + (100f-11f)/(1 + (satelliteCnt - index++)));
+            sendMessage("Generating satellite data (" + item.getName() + ") ...", 11f + (100f - 11f) / (1 + (satelliteCnt - index++)));
             // Start generate orbits
             try {
                 satelliteCollections.add(createOrbit(item));
@@ -246,7 +256,17 @@ public class DataAccessController {
             }
         }
 
-        sendMessage("TLE data acquired ...", 100f);
+        /**
+         * Geterate ground station objects
+         */
+        List<GroundStation> groundStations = groundStationService.getAll();
+        satelliteItems.add(new SatelliteItem("GPS_GROUND_STATIONS", "Ground Stations", true));
+
+        groundStations.forEach(groundStation -> {
+            satelliteItems.add(new SatelliteItem(UUID.randomUUID().toString(), groundStation.getName(), false, "GPS_GROUND_STATIONS"));
+        });
+
+        sendMessage("TLE data and Ground station data acquired ...", 100f);
 
         SatellitePopulated satellitePopulated = new SatellitePopulated();
         satellitePopulated.setSatelliteCollections(satelliteCollections);
@@ -258,11 +278,12 @@ public class DataAccessController {
 
     /**
      * Add satellites via 2-line element string
+     *
      * @param payload
      * @return
      */
     @PostMapping(value = "/satellite/add", consumes = "application/json")
-    public SatellitePopulated addSatellites(@RequestBody Map<String, Object> payload){
+    public SatellitePopulated addSatellites(@RequestBody Map<String, Object> payload) {
 
         // Read satellite TLE content
         String tleContent = payload.get("tle").toString();
@@ -281,7 +302,7 @@ public class DataAccessController {
 
         int satelliteCnt = tleDtos.size();
         float index = 1f;
-        for(Tle item : tleDtos){
+        for (Tle item : tleDtos) {
             try {
                 // Save to database
                 tleService.save(item);
@@ -292,7 +313,7 @@ public class DataAccessController {
                 } catch (OrekitException e) {
                     e.printStackTrace();
                 }
-            }catch(Exception e){
+            } catch (Exception e) {
                 // TODO handle DB exception, ignore now.
             }
         }
@@ -306,6 +327,7 @@ public class DataAccessController {
 
     /**
      * Start simulator
+     *
      * @param payload
      * @return
      * @throws OrekitException
@@ -338,20 +360,20 @@ public class DataAccessController {
         msApplicationService.removeAll();
 
 
-        for (int i = 0; i<tleDtos.size()-1; i++){
+        for (int i = 0; i < tleDtos.size() - 1; i++) {
             Orbit orbit1Init = this.getInitialOrb(tleDtos.get(i));
             AbsoluteDate absoluteDateCurrentStartDate = absoluteStartDate;
             propagator1 = new KeplerianPropagator(orbit1Init);
             propagator1.setSlaveMode();
 
-            for(int j = i+1; j<tleDtos.size(); j++){
+            for (int j = i + 1; j < tleDtos.size(); j++) {
 
                 MessageHub messageHub = new MessageHub();
                 Orbit orbit2Init = this.getInitialOrb(tleDtos.get(j));
                 propagator2 = new KeplerianPropagator(orbit2Init);
                 propagator2.setSlaveMode();
                 // Loop between time.
-                while(absoluteDateCurrentStartDate.compareTo(absoluteEndDate) <= 0){
+                while (absoluteDateCurrentStartDate.compareTo(absoluteEndDate) <= 0) {
                     // propagate
 
                     SpacecraftState currentState1 = propagator1.propagate(absoluteDateCurrentStartDate);
@@ -363,18 +385,17 @@ public class DataAccessController {
                     double distance = Vector3D.distance(currentState1.getPVCoordinates().getPosition(), currentState2.getPVCoordinates().getPosition());
                     boolean los = (gamma > eta
                             || (
-                                    gamma < eta
-                                            && distance < currentState1.getPVCoordinates().getPosition().getNorm()));
-
+                            gamma < eta
+                                    && distance < currentState1.getPVCoordinates().getPosition().getNorm()));
 
 
                     boolean losChanged = los != messageHub.isLos();
-                    boolean distanceChanged = Math.abs((messageHub.getDistance()-distance)/messageHub.getDistance())>=delta;
+                    boolean distanceChanged = Math.abs((messageHub.getDistance() - distance) / messageHub.getDistance()) >= delta;
 
                     boolean needUpdate = absoluteDateCurrentStartDate.compareTo(absoluteStartDate) == 0 ||
                             distanceChanged || losChanged;
 
-                    if(needUpdate) {
+                    if (needUpdate) {
                         messageHub = new MessageHub();
                         messageHub.setSourceId(tleDtos.get(i).getId());
                         messageHub.setDestinationId(tleDtos.get(j).getId());
@@ -385,13 +406,13 @@ public class DataAccessController {
                             // First record always present
                             messageHub.setMsgType(0);   // Init
                             messageHub.setSubMsgType(0);    // Init
-                        }else {
+                        } else {
                             if (losChanged) {
                                 messageHub.setMsgType(1);
                                 messageHub.setSubMsgType(3);                // Connectivity updated
                             } else {
-                                if(los){
-                                    if(distanceChanged){
+                                if (los) {
+                                    if (distanceChanged) {
                                         messageHub.setMsgType(1);
                                         messageHub.setSubMsgType(1);        // Delay updated
                                     }
@@ -418,11 +439,11 @@ public class DataAccessController {
 
         // TODO write JSON to file system with (new ObjectMapper()).writeValueAsString(applicationDtos), then provide a link for user to download.
 
-        for(HashMap<String, Object> hashMap : applicationDtos){
+        for (HashMap<String, Object> hashMap : applicationDtos) {
             // Get current absolute date based on start time.
             String _startTime = hashMap.get("startTime").toString();
             String _endTime = hashMap.get("endTime").toString();
-            DateTime _start = DateTime.parse( _startTime);
+            DateTime _start = DateTime.parse(_startTime);
             DateTime _end = DateTime.parse(_endTime);
             String appName = hashMap.get("name").toString();
 
@@ -430,12 +451,12 @@ public class DataAccessController {
             applicationTraffic.setAppName(appName);
 
             // Get traffic model for this application.
-            HashMap<String, String> tmData =  (HashMap<String, String>)hashMap.get("tm");
+            HashMap<String, String> tmData = (HashMap<String, String>) hashMap.get("tm");
             String tmCode = tmData.get("code");
             // Find traffic model
             Optional<TrafficModel> trafficModel = trafficModelGenericService.getByCode(tmCode);
             // Skip to next application if this application's traffic model is not presented.
-            if(!trafficModel.isPresent()){
+            if (!trafficModel.isPresent()) {
                 continue;
             }
 
@@ -449,12 +470,12 @@ public class DataAccessController {
             msaApplication.setDestObj(hashMap.get("dest").toString());
             msaApplication.setTrafficModelCode(tmCode);
             msaApplication.setTrafficModelConfig((new JSONObject(tmData)).toJSONString());
-            msApplicationService.add(msaApplication);
+            msaApplication = msApplicationService.add(msaApplication);
 
             TrafficModel trafficModelExtracted = trafficModel.get();
             // Loop traffic model attributes and update if necessary
             trafficModelExtracted.getTrafficModelConfigs().stream().forEach(tmConfig -> {
-                if(tmData.containsKey(tmConfig.getName())){
+                if (tmData.containsKey(tmConfig.getName())) {
                     tmConfig.setValue(String.valueOf(tmData.get(tmConfig.getName())));
                 }
             });
@@ -463,7 +484,23 @@ public class DataAccessController {
 
             List<ApplicationTrafficData> applicationTrafficDataList = trafficeModelService.simulate(_start, _end, trafficModelExtracted.getTrafficModelConfigs(), applicationTraffic.getAppName());
             applicationTraffic.setApplicationTrafficDataList(applicationTrafficDataList);
+
+            // Save those data to database before end loop
+            AppTrafficData appTrafficData = null;
+            for (ApplicationTrafficData appData : applicationTrafficDataList) {
+                appTrafficData = new AppTrafficData();
+                appTrafficData.setApplicationTrafficModel(msaApplication);
+                appTrafficData.setDataTime(appData.getTimeString());
+                appTrafficData.setVolume(appData.getTrafficVolumn());
+
+                appTrafficDataService.save(appTrafficData);
+            }
             applicationTraffics.add(applicationTraffic);
+
+            // Simulate the shortest path
+
+            getShortestPath(hashMap.get("source").toString(), hashMap.get("dest").toString(), absoluteStartDate);
+
         }
 
         SimulateData simulateData = new SimulateData();
@@ -475,11 +512,12 @@ public class DataAccessController {
 
     /**
      * Disable satellite from database
+     *
      * @param payload
      * @return
      */
-    @PostMapping(value = "/satellite/disable", consumes="application/json")
-    public NameValue disableSatellite(@RequestBody Map<String, Object> payload){
+    @PostMapping(value = "/satellite/disable", consumes = "application/json")
+    public NameValue disableSatellite(@RequestBody Map<String, Object> payload) {
         // Get satellite name
         String satelliteName = payload.get("name").toString();
 
@@ -494,6 +532,7 @@ public class DataAccessController {
 
     /**
      * Get satellite status in any given time.
+     *
      * @param payload
      * @return
      * @throws OrekitException
@@ -519,7 +558,7 @@ public class DataAccessController {
         keplerianPropagator.setSlaveMode();
 
         // Get current absolute date based on juliandate
-        DateTime dateTime = DateTime.parse(julianTime.length()>23 ? julianTime.substring(0, 23) : julianTime);        // cut time string
+        DateTime dateTime = DateTime.parse(julianTime.length() > 23 ? julianTime.substring(0, 23) : julianTime);        // cut time string
         AbsoluteDate absoluteDate = new AbsoluteDate(dateTime.toDate(), TimeScalesFactory.getUTC());
 
         // Get orbit status
@@ -529,24 +568,24 @@ public class DataAccessController {
         List<NameValue> nameValues = new ArrayList<>();
 
         // Populate status
-        nameValues.add( new NameValue("Satellite Name", satelliteName));
-        nameValues.add( new NameValue("Satellite Id", tle.getNumber()));
-        nameValues.add( new NameValue("Classification", tle.getClassification()));
-        nameValues.add( new NameValue("COSPAR ID", tle.getLaunchYear()+"-"+tle.getLaunchNumber()+tle.getLaunchPiece()));
-        nameValues.add( new NameValue("Inclination", FastMath.toDegrees(o.getI()) + "\u00B0"));
-        nameValues.add( new NameValue("Eccentricity", o.getEccentricAnomaly()));
-        nameValues.add( new NameValue("RA ascending node", o.getRightAscensionOfAscendingNode()));
-        nameValues.add( new NameValue("Argument perihelion", FastMath.toDegrees(o.getPerigeeArgument()) + "\u00B0"));
-        nameValues.add( new NameValue("Mean anomaly", FastMath.toDegrees(o.getMeanAnomaly())  + "\u00B0"));
-        nameValues.add( new NameValue("Position X[m]", o.getPVCoordinates().getPosition().getX()) );
-        nameValues.add( new NameValue("Position Y[m]", o.getPVCoordinates().getPosition().getY()));
-        nameValues.add( new NameValue("Position Z[m]", o.getPVCoordinates().getPosition().getZ()));
-        nameValues.add( new NameValue("Angular Velocity X", o.getPVCoordinates().getAngularVelocity().getX()));
-        nameValues.add( new NameValue("Angular Velocity Y", o.getPVCoordinates().getAngularVelocity().getY()));
-        nameValues.add( new NameValue("Angular Velocity Z", o.getPVCoordinates().getAngularVelocity().getZ()));
-        nameValues.add( new NameValue("Acceleration X", o.getPVCoordinates().getAcceleration().getX()));
-        nameValues.add( new NameValue("Acceleration Y", o.getPVCoordinates().getAcceleration().getY()));
-        nameValues.add( new NameValue("Acceleration Z", o.getPVCoordinates().getAcceleration().getZ()));
+        nameValues.add(new NameValue("Satellite Name", satelliteName));
+        nameValues.add(new NameValue("Satellite Id", tle.getNumber()));
+        nameValues.add(new NameValue("Classification", tle.getClassification()));
+        nameValues.add(new NameValue("COSPAR ID", tle.getLaunchYear() + "-" + tle.getLaunchNumber() + tle.getLaunchPiece()));
+        nameValues.add(new NameValue("Inclination", FastMath.toDegrees(o.getI()) + "\u00B0"));
+        nameValues.add(new NameValue("Eccentricity", o.getEccentricAnomaly()));
+        nameValues.add(new NameValue("RA ascending node", o.getRightAscensionOfAscendingNode()));
+        nameValues.add(new NameValue("Argument perihelion", FastMath.toDegrees(o.getPerigeeArgument()) + "\u00B0"));
+        nameValues.add(new NameValue("Mean anomaly", FastMath.toDegrees(o.getMeanAnomaly()) + "\u00B0"));
+        nameValues.add(new NameValue("Position X[m]", o.getPVCoordinates().getPosition().getX()));
+        nameValues.add(new NameValue("Position Y[m]", o.getPVCoordinates().getPosition().getY()));
+        nameValues.add(new NameValue("Position Z[m]", o.getPVCoordinates().getPosition().getZ()));
+        nameValues.add(new NameValue("Angular Velocity X", o.getPVCoordinates().getAngularVelocity().getX()));
+        nameValues.add(new NameValue("Angular Velocity Y", o.getPVCoordinates().getAngularVelocity().getY()));
+        nameValues.add(new NameValue("Angular Velocity Z", o.getPVCoordinates().getAngularVelocity().getZ()));
+        nameValues.add(new NameValue("Acceleration X", o.getPVCoordinates().getAcceleration().getX()));
+        nameValues.add(new NameValue("Acceleration Y", o.getPVCoordinates().getAcceleration().getY()));
+        nameValues.add(new NameValue("Acceleration Z", o.getPVCoordinates().getAcceleration().getZ()));
 
         selectedSatelliteDto.setSatelliteProperties(nameValues);
 
@@ -554,9 +593,9 @@ public class DataAccessController {
         List<SatelliteXSatellite> satelliteXSatellites = new ArrayList<>();
         // Get all the objects from database
         List<Tle> tleDtos = tleService.getAllTles();
-        for(int i = 0; i<tleDtos.size(); i++){
+        for (int i = 0; i < tleDtos.size(); i++) {
             Tle currentTle = tleDtos.get(i);
-            if(currentTle.getName().equalsIgnoreCase(satelliteName)){
+            if (currentTle.getName().equalsIgnoreCase(satelliteName)) {
                 continue;
             }
 
@@ -577,7 +616,7 @@ public class DataAccessController {
                     gamma < eta
                             && distance < currentState.getPVCoordinates().getPosition().getNorm()));
 
-            if(los){
+            if (los) {
                 SatelliteXSatellite satelliteXSatellite = new SatelliteXSatellite();
                 satelliteXSatellite.setSource(satelliteName);
                 satelliteXSatellite.setDestination(currentTle.getName());
@@ -595,14 +634,15 @@ public class DataAccessController {
 
     /**
      * Get satellite id by name.
+     *
      * @param name
      * @return
      */
     @GetMapping("/satellite/getidbyname/{name}")
-    public String getObjectIdByName(@PathVariable("name") String name){
+    public String getObjectIdByName(@PathVariable("name") String name) {
 
         Tle tle = tleService.getByName(name);
-        if(tle != null) {
+        if (tle != null) {
             return tle.getId();
         }
 
@@ -612,10 +652,11 @@ public class DataAccessController {
 
     /**
      * Reset data
+     *
      * @return
      */
     @PostMapping(value = "/simulation/reset")
-    public boolean resetSimulation(){
+    public boolean resetSimulation() {
         boolean success = false;
 
         try {
@@ -624,7 +665,7 @@ public class DataAccessController {
             // Delete all records from message table
             messageHubService.removeAll();
             success = true;
-        }catch(Exception ex){
+        } catch (Exception ex) {
 
         }
 
@@ -632,22 +673,21 @@ public class DataAccessController {
     }
 
 
-
-    private void julianFractionConverter(Tle tleDto){
+    private void julianFractionConverter(Tle tleDto) {
 
         // Get year
         int epochYear = tleDto.getEpochYear();
         int year = epochYear > 70 ? 1900 + epochYear : 2000 + epochYear;
-        OffsetDateTime epochCalendarNewStyleActOf2017 = LocalDate.of ( year , Month.JANUARY , 1 ).atStartOfDay ().atOffset ( ZoneOffset.UTC );
+        OffsetDateTime epochCalendarNewStyleActOf2017 = LocalDate.of(year, Month.JANUARY, 1).atStartOfDay().atOffset(ZoneOffset.UTC);
 
         BigDecimal bd = new BigDecimal(tleDto.getJulianFraction());
         long days = bd.toBigInteger().longValue();
-        BigDecimal fractionOfADay = bd.subtract ( new BigDecimal ( days ) ); // Extract the fractional number, separate from the integer number.
-        BigDecimal secondsFractional = new BigDecimal ( TimeUnit.DAYS.toSeconds ( 1 ) ).multiply ( fractionOfADay );
-        long secondsWhole = secondsFractional.longValue ();
-        long nanos = secondsFractional.subtract ( new BigDecimal ( secondsWhole ) ).multiply ( new BigDecimal ( 1_000_000_000L ) ).longValue ();
-        Duration duration = Duration.ofDays ( days ).plusSeconds ( secondsWhole ).plusNanos ( nanos );
-        OffsetDateTime odt = epochCalendarNewStyleActOf2017.plus ( duration );
+        BigDecimal fractionOfADay = bd.subtract(new BigDecimal(days)); // Extract the fractional number, separate from the integer number.
+        BigDecimal secondsFractional = new BigDecimal(TimeUnit.DAYS.toSeconds(1)).multiply(fractionOfADay);
+        long secondsWhole = secondsFractional.longValue();
+        long nanos = secondsFractional.subtract(new BigDecimal(secondsWhole)).multiply(new BigDecimal(1_000_000_000L)).longValue();
+        Duration duration = Duration.ofDays(days).plusSeconds(secondsWhole).plusNanos(nanos);
+        OffsetDateTime odt = epochCalendarNewStyleActOf2017.plus(duration);
 
 //        System.out.println ( "bd: " + bd );
 //        System.out.println ( "days: " + days );
@@ -673,6 +713,7 @@ public class DataAccessController {
 
     /**
      * Create orbit
+     *
      * @param tleDto
      * @throws OrekitException
      */
@@ -697,7 +738,7 @@ public class DataAccessController {
         int cpt = 1;
         for (AbsoluteDate extrapDate = new AbsoluteDate(new Date(), TimeScalesFactory.getUTC()).shiftedBy(-60);
              extrapDate.compareTo(finalDate) <= 0;
-             extrapDate = extrapDate.shiftedBy(stepT)){
+             extrapDate = extrapDate.shiftedBy(stepT)) {
 
             SpacecraftState currentState = keplerianPropagator.propagate(extrapDate);
 //            System.out.println("step " + cpt);
@@ -707,8 +748,8 @@ public class DataAccessController {
             KeplerianOrbit o = (KeplerianOrbit) OrbitType.KEPLERIAN.convertType(currentState.getOrbit());
             CartesianOrbit cartesianOrbit = new CartesianOrbit(o);
             SatelliteDto satelliteDto = new SatelliteDto();
-            satelliteDto.setTime((long) (stepT*cpt++));
-            satelliteDto.setJulianDate(cartesianOrbit.getDate().toString()+"Z");
+            satelliteDto.setTime((long) (stepT * cpt++));
+            satelliteDto.setJulianDate(cartesianOrbit.getDate().toString() + "Z");
             satelliteDto.setCartesian3(cartesianOrbit.getPVCoordinates().getPosition().toArray());
             satelliteDtos.add(satelliteDto);
         }
@@ -756,6 +797,7 @@ public class DataAccessController {
 
     /**
      * Get intial orb
+     *
      * @param tleDto
      * @return
      * @throws OrekitException
@@ -768,7 +810,7 @@ public class DataAccessController {
         // Center attraction coefficient
         double mu = 3.986004415e+14;
         // Initial orbit
-        double a = Math.pow(u, 1d/3) / Math.pow((2*tleDto.getMeanMotion()*Math.PI/86400), 2d/3);                             //24396159;                    // semi major axis in meters
+        double a = Math.pow(u, 1d / 3) / Math.pow((2 * tleDto.getMeanMotion() * Math.PI / 86400), 2d / 3);                             //24396159;                    // semi major axis in meters
         double e = tleDto.getEccentricity();    // 0.72831215;                  // eccentricity
         double i = FastMath.toRadians(tleDto.getInclination());       // inclination
         double omega = FastMath.toRadians(tleDto.getPerigeeArgument()); // perigee argument
@@ -809,35 +851,36 @@ public class DataAccessController {
 
     }
 
-    private void sendMessage(String message, float percentage){
+    private void sendMessage(String message, float percentage) {
         webSocket.convertAndSend("/topic/simulation/start", new SimulationMessage(message + "     ", percentage));
     }
 
     /**
      * Convert Strings to TLE obje
+     *
      * @param tleContent
      * @return
      */
-    private List<Tle> convertToTleDto(List<String> tleContent){
+    private List<Tle> convertToTleDto(List<String> tleContent) {
         // Load to TLE Dto （every 3 lines)
         List<Tle> tleDtos = new ArrayList<>();
         int i = 0;
         Tle tleDto = new Tle();
         String tleLine1 = "";
         String tleLine2;
-        for(String tleLine : tleContent){
-            if(i%3 == 0){
+        for (String tleLine : tleContent) {
+            if (i % 3 == 0) {
                 i = 0;
             }
 
-            if(i == 0){
+            if (i == 0) {
                 tleDto = new Tle();
-                tleDto.setName(tleLine.substring(0,24).trim());
+                tleDto.setName(tleLine.substring(0, 24).trim());
             }
-            if(i == 1){
+            if (i == 1) {
                 // Line 1
                 tleDto.setClassification(tleLine.substring(7, 8).trim().charAt(0));
-                int year2digits = Integer.parseInt(tleLine.substring(9,11).trim());
+                int year2digits = Integer.parseInt(tleLine.substring(9, 11).trim());
                 tleDto.setLaunchYear(year2digits > 50 ? 1900 + year2digits : 2000 + year2digits);
                 tleDto.setLaunchNumber(Integer.parseInt(tleLine.substring(11, 14).trim()));
                 tleDto.setLaunchPiece(tleLine.substring(14, 17).trim());
@@ -846,12 +889,12 @@ public class DataAccessController {
 
                 tleLine1 = tleLine;
             }
-            if(i == 2){
+            if (i == 2) {
                 // Line 2
-                tleDto.setNumber(tleLine.substring(2,7).trim());
+                tleDto.setNumber(tleLine.substring(2, 7).trim());
                 tleDto.setInclination(Double.parseDouble(tleLine.substring(8, 16).trim()));
                 tleDto.setAscensionAscending(Double.parseDouble(tleLine.substring(17, 25).trim()));
-                tleDto.setEccentricity(Double.parseDouble("0."+tleLine.substring(26, 33).trim()));
+                tleDto.setEccentricity(Double.parseDouble("0." + tleLine.substring(26, 33).trim()));
                 tleDto.setPerigeeArgument(Double.parseDouble(tleLine.substring(34, 42).trim()));
                 tleDto.setMeanAnomaly(Double.parseDouble(tleLine.substring(43, 51).trim()));
                 tleDto.setMeanMotion(Double.parseDouble(tleLine.substring(52, 63).trim()));
@@ -887,11 +930,12 @@ public class DataAccessController {
 
     /**
      * Get angle velocity between two satellites in 1 second.
+     *
      * @param satelliteSource
      * @param satelliteDest
      * @return
      */
-    private double getAngularVelocity(SpacecraftState satelliteSource, SpacecraftState satelliteDest){
+    private double getAngularVelocity(SpacecraftState satelliteSource, SpacecraftState satelliteDest) {
 
         // Get angle for current
 //        double distanceCurrent = getDistanceBetweenPair(satelliteSource, satelliteDest);
@@ -932,18 +976,18 @@ public class DataAccessController {
         double destYAgo = satelliteDestAgo.getPVCoordinates().getPosition().getY();
         double destZAgo = satelliteDestAgo.getPVCoordinates().getPosition().getZ();
 
-        double a2 = Math.atan2(Math.sqrt(Math.pow( sourceY*destZ - sourceZ*destY, 2 ) +
-                Math.pow( sourceZ*destX - sourceX*destZ, 2 ) +
-                Math.pow( sourceX*destY - sourceY*destX, 2 )
-        ), sourceX*destX + sourceY*destY + sourceZ*destZ);
+        double a2 = Math.atan2(Math.sqrt(Math.pow(sourceY * destZ - sourceZ * destY, 2) +
+                Math.pow(sourceZ * destX - sourceX * destZ, 2) +
+                Math.pow(sourceX * destY - sourceY * destX, 2)
+        ), sourceX * destX + sourceY * destY + sourceZ * destZ);
 
-        double a2SecondAgo = Math.atan2(Math.sqrt(Math.pow( sourceYAgo*destZAgo - sourceZAgo*destYAgo, 2 ) +
-                Math.pow( sourceZAgo*destXAgo - sourceXAgo*destZAgo, 2 ) +
-                Math.pow( sourceXAgo*destYAgo - sourceYAgo*destXAgo, 2 )
-        ), sourceXAgo*destXAgo + sourceYAgo*destYAgo + sourceZAgo*destZAgo);
+        double a2SecondAgo = Math.atan2(Math.sqrt(Math.pow(sourceYAgo * destZAgo - sourceZAgo * destYAgo, 2) +
+                Math.pow(sourceZAgo * destXAgo - sourceXAgo * destZAgo, 2) +
+                Math.pow(sourceXAgo * destYAgo - sourceYAgo * destXAgo, 2)
+        ), sourceXAgo * destXAgo + sourceYAgo * destYAgo + sourceZAgo * destZAgo);
 
 //        return (Math.abs(angleCurrent - angleSecondAgo));
-        return Math.abs(a2-a2SecondAgo);
+        return Math.abs(a2 - a2SecondAgo);
     }
 
     @Qualifier("oneTimeDataTransmissionTrafficModel")
@@ -966,28 +1010,205 @@ public class DataAccessController {
     @Autowired
     TrafficeModelService smallDataRegularIntervalTransmission;
 
-    private TrafficeModelService getTrafficModelService(String trafficModelCode){
+    private TrafficeModelService getTrafficModelService(String trafficModelCode) {
 
-        if(trafficModelCode.equalsIgnoreCase("TM1")) {
+        if (trafficModelCode.equalsIgnoreCase("TM1")) {
             return oneTimeDataTrasmissionTrafficeModel;
         }
 
-        if(trafficModelCode.equalsIgnoreCase("TM2")) {
+        if (trafficModelCode.equalsIgnoreCase("TM2")) {
             return staticPeriodicalDataTramsmissionTrafficModel;
         }
 
-        if(trafficModelCode.equalsIgnoreCase("TM3")){
+        if (trafficModelCode.equalsIgnoreCase("TM3")) {
             return regularRandomDataTransmissionTrafficModel;
         }
 
-        if(trafficModelCode.equalsIgnoreCase("TM4")) {
+        if (trafficModelCode.equalsIgnoreCase("TM4")) {
             return smallDataShortIntervalTransmissionTrafficModel;
         }
 
-        if(trafficModelCode.equalsIgnoreCase("TM5")) {
+        if (trafficModelCode.equalsIgnoreCase("TM5")) {
             return smallDataRegularIntervalTransmission;
         }
 
         return null;
+    }
+
+
+    private void getShortestPath(String source, String dest, AbsoluteDate absoluteDate) throws OrekitException {
+
+        // Get ground stations.
+        List<GroundStation> groundStations = groundStationService.getAll();
+        // Get satellites
+        List<Tle> tles = tleService.getAllTles();
+
+        Graph graph = new Graph();
+        // Add node to graph
+        groundStations.forEach(gs -> graph.addNode(new Node(gs.getId(), "gs")));
+
+        tles.forEach(tle -> graph.addNode(new Node(tle.getId(), "satellite")));
+
+        // Get source node
+        Node sourceNode = null;
+        Node destNode = null;
+        for (Node node : graph.getNodes()) {
+
+            if(sourceNode != null && destNode != null){
+                break;
+            }
+            if (node.getName().equalsIgnoreCase(source)) {
+                sourceNode = node;
+                continue;
+            }
+            if (node.getName().equalsIgnoreCase(dest)) {
+                destNode = node;
+                continue;
+            }
+        }
+
+        // Get initial orb
+        Autoconfiguration.configureOrekit();
+        // Start weight assignment
+//        setWeight(sourceNode, graph, new HashSet<Node>(), absoluteDate);
+        sourceNode.addDestination(destNode, 200);
+        Graph graphResult = Dijkstra.calculateShortestPathFromSource(graph, sourceNode);
+
+        System.out.println("DEBUG Point");
+
+    }
+
+
+    private void setWeight(Node soureNode,  Graph graph,  Set<Node> evaluatedNodes, AbsoluteDate absoluteDate){
+
+        if(evaluatedNodes.contains(soureNode)){
+            return;
+        }
+
+        evaluatedNodes.add(soureNode);
+
+        for(Node node : graph.getNodes()){
+            if( node.getName().equals(soureNode.getName())
+                    || soureNode.getType().equals("gs") && node.getType().equals("gs")){
+                // Skip
+                continue;
+            }
+            // Do compute
+            if(soureNode.getType().equals("satellite")){
+                if(node.getType().equals("satellite")){
+                    // Get both tle
+                    Optional<Tle> tleSourceOptional = tleService.findById(soureNode.getName());
+                    Optional<Tle> tleDestOptional = tleService.findById(node.getName());
+
+                    if(tleSourceOptional.isPresent() && tleDestOptional.isPresent()){
+                        Tle sourceTle = tleSourceOptional.get();
+                        Tle destTle = tleDestOptional.get();
+                        try{
+                            Orbit initialOrbit = getInitialOrb(sourceTle);
+                            /**
+                             * Slave mode
+                             */
+                            KeplerianPropagator keplerianPropagator = new KeplerianPropagator(initialOrbit);
+                            // Set to slave mode
+                            keplerianPropagator.setSlaveMode();
+                            SpacecraftState sourceState = keplerianPropagator.propagate(absoluteDate);
+
+                            Orbit initialOrbitDest = getInitialOrb(destTle);
+                            keplerianPropagator= new KeplerianPropagator(initialOrbitDest);
+                            keplerianPropagator.setSlaveMode();
+                            SpacecraftState destState = keplerianPropagator.propagate(absoluteDate);
+
+                            // Calculate line of sight
+                            double eta = FastMath.asin(Constants.WGS84_EARTH_EQUATORIAL_RADIUS / sourceState.getPVCoordinates().getPosition().getNorm());
+                            double gamma = Vector3D.angle(sourceState.getPVCoordinates().getPosition().negate(), destState.getPVCoordinates().getPosition().subtract(sourceState.getPVCoordinates().getPosition()));
+                            double distance = Vector3D.distance(sourceState.getPVCoordinates().getPosition(), destState.getPVCoordinates().getPosition());
+                            boolean los = (gamma > eta
+                                    || (
+                                    gamma < eta
+                                            && distance < sourceState.getPVCoordinates().getPosition().getNorm()));
+
+                            if(los){
+                                soureNode.addDestination(node, distance);
+                            }
+
+                        }catch (OrekitException e){
+                            //TODO deal with error or throw
+                        }
+                    }
+                }
+            }
+
+            System.out.println(evaluatedNodes.size());
+            setWeight(node, graph, evaluatedNodes, absoluteDate);
+        }
+    }
+
+
+
+    private void weightNode(
+            boolean isSourceSatellite,
+            Node sourceNode,
+            SpacecraftState spacecraftStateSource,
+            AbsoluteDate absoluteDate,
+            Set<Node> evalutedNodes,
+            Set<Node> totalNodes) {
+
+        for (Node targetNode : totalNodes) {
+            if (evalutedNodes.contains(targetNode) || sourceNode.getName().equals(targetNode.getName())) {
+                continue;
+            }
+
+            if (isSourceSatellite) {
+
+                // Check for satellite
+                if (targetNode.getType().equals("satellite")) {
+                    // Check for LoS
+                    Optional<Tle> tleOptional = tleService.findById(targetNode.getName());
+                    if (tleOptional.isPresent()) {
+                        Tle tle = tleOptional.get();
+
+                        try {
+                            Orbit orbit1Init = this.getInitialOrb(tle);
+
+                            KeplerianPropagator keplerianPropagatorLoop = new KeplerianPropagator(orbit1Init);
+                            keplerianPropagatorLoop.setSlaveMode();
+
+                            // Get spacecraft state
+                            SpacecraftState currentStateLoop = keplerianPropagatorLoop.propagate(absoluteDate);
+
+                            // Calculate line of sight
+                            double eta = FastMath.asin(Constants.WGS84_EARTH_EQUATORIAL_RADIUS / spacecraftStateSource.getPVCoordinates().getPosition().getNorm());
+                            double gamma = Vector3D.angle(spacecraftStateSource.getPVCoordinates().getPosition().negate(), currentStateLoop.getPVCoordinates().getPosition().subtract(spacecraftStateSource.getPVCoordinates().getPosition()));
+                            double distance = Vector3D.distance(spacecraftStateSource.getPVCoordinates().getPosition(), currentStateLoop.getPVCoordinates().getPosition());
+                            boolean los = (gamma > eta
+                                    || (
+                                    gamma < eta
+                                            && distance < spacecraftStateSource.getPVCoordinates().getPosition().getNorm()));
+
+                            if (!los) {
+                                continue;
+                            }
+
+                            sourceNode.addDestination(targetNode, (int) distance);
+
+                        } catch (OrekitException e) {
+                            e.printStackTrace();
+                        }
+
+                    }
+                } else {
+
+                }
+
+            } else {
+                // Ground station
+                if(targetNode.getType().equals("gs")){
+                    // No connection
+                    continue;
+                }
+
+                // Satellite
+            }
+        }
     }
 }

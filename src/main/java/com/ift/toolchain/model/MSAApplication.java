@@ -7,6 +7,7 @@ import org.hibernate.annotations.GenericGenerator;
 
 import javax.persistence.*;
 import java.util.Date;
+import java.util.List;
 
 @Entity
 @Data
@@ -27,4 +28,7 @@ public class MSAApplication {
 
     @Lob
     private String trafficModelConfig;
+
+    @OneToMany(mappedBy = "applicationTrafficModel")
+    private List<AppTrafficData> trafficData;
 }

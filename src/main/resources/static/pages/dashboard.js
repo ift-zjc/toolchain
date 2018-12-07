@@ -235,7 +235,7 @@ $(function(){
             location: 'before',
             widget: 'dxButton',
             options: {
-                text: 'Remove Satellite',
+                text: 'Remove Object',
                 icon: 'remove',
                 disabled: true,
                 elementAttr: {
@@ -1096,6 +1096,7 @@ function initApplicationComponents(){
  */
 function initWebsocket(){
     var socket = new SockJS('/simulation-websocket');
+    
     var stompClient = Stomp.over(socket);
 
     stompClient.connect({}, function (frame){
@@ -1171,7 +1172,7 @@ function addSatellite(viewer, satellite){
 function addGroundStations(){
     // init ground stations
     _.each(afMonitorStations,function(afMonitor){
-        addGroundStation(afMonitor.gsId, Cesium.Cartesian3.fromArray(afMonitor.cartesian3), afMonitor.name);
+        addGroundStation(afMonitor.name, Cesium.Cartesian3.fromArray(afMonitor.cartesian3), afMonitor.name);
     });
 }
 
