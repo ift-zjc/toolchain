@@ -21,6 +21,7 @@ var tickTriggerGap = 10;        //in second
 var currentTick;
 var connectedObjectPolylines;
 var connectedObjectPolylinesCurrent;
+var pathRouthing = [];
 
 var dgApplications;
 var chartApps;
@@ -1225,7 +1226,7 @@ function handleTick(clock){
                     _.each(closestSatellites, function (_sitem) {
                         // TODO connect to source;
                         // Connecting satellites
-                        connectObject(_sitem.source, _sitem.destination, false);
+                        connectObject(_sitem.source, _sitem.destination, false, false);
                     });
 
                     // Check for the difference between connectedObjectPolylines  and connectedObjectPolylinesCurrent.
@@ -1250,6 +1251,7 @@ function handleTick(clock){
                 }
             });
 
+
             // Calling for App model routing calculation
             var _data = {'time': clock.currentTime.toString(), appData: dsApplications.items()};
             $.ajax({
@@ -1259,12 +1261,16 @@ function handleTick(clock){
                 contentType: "application/json",
                 success: function(data){
                     // remove the links and reapply.
+                    _.each(pathRouthing, function(_id){
+                        viewer.entities.removeById(_id);
+                    });
+                    pathRouthing = [];
                     _.each(data, function(path){
                         for ( i = 0; i<path.path.length-1; i++){
                             connectObject(
                                 path.path[i],
                                 path.path[i+1],
-                                false);
+                                false, true);
                         }
                     });
                 }
@@ -1281,10 +1287,14 @@ function handleTick(clock){
  * @param sourceName
  * @param destName
  */
-function connectObject(sourceName, destName, followSurface){
+function connectObject(sourceName, destName, followSurface, routing){
 
     var _id = sourceName + '-' + destName;
-    connectedObjectPolylinesCurrent.push(_id);
+    if(routing){
+        pathRouthing.push(_id);
+    }else{
+        connectedObjectPolylinesCurrent.push(_id);
+    }
     // If already existing
     if(!_.isUndefined(viewer.entities.getById(_id))){
         return;
@@ -1377,7 +1387,8 @@ function handleSelectedEntityChangedEvent(event){
 function removePolylines(){
     _.each(connectedObjectPolylines, function(_id){
         viewer.entities.removeById(_id);
-    })
+    });
+
 }
 
 /**
