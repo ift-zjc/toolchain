@@ -195,7 +195,7 @@ $(function(){
     });
 
     viewer = new Cesium.Viewer('cesiumContainer', {
-        terrainProvider: terrainProvider,
+        // terrainProvider: terrainProvider,
         baseLayerPicker : false,
         shadows: true
     });
@@ -1248,7 +1248,27 @@ function handleTick(clock){
                 error: function (data) {
 
                 }
-            })
+            });
+
+            // Calling for App model routing calculation
+            var _data = {'time': clock.currentTime.toString(), appData: dsApplications.items()};
+            $.ajax({
+                method: 'post',
+                url: '/api/app/routing',
+                data: JSON.stringify(_data),
+                contentType: "application/json",
+                success: function(data){
+                    // remove the links and reapply.
+                    _.each(data, function(path){
+                        for ( i = 0; i<path.path.length-1; i++){
+                            connectObject(
+                                path.path[i],
+                                path.path[i+1],
+                                false);
+                        }
+                    });
+                }
+            });
         }
     }catch(ex){
         // Do nothing now.

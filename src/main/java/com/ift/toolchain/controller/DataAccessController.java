@@ -67,6 +67,10 @@ public class DataAccessController {
     @Autowired
     AppTrafficDataService appTrafficDataService;
 
+    private final double maxAngularVelocity = 0.000087;
+    private final double maxDistanceLos = 51591*1000;
+    private final double maxCornDistance = 5.5E7;
+
 
     /**
      * Get traffic model datagrid source
@@ -497,10 +501,6 @@ public class DataAccessController {
             }
             applicationTraffics.add(applicationTraffic);
 
-            // Simulate the shortest path
-
-            getShortestPath(hashMap.get("source").toString(), hashMap.get("dest").toString(), absoluteStartDate);
-
         }
 
         SimulateData simulateData = new SimulateData();
@@ -508,6 +508,46 @@ public class DataAccessController {
         simulateData.setApplicationTraffic(applicationTraffics);
 
         return simulateData;
+    }
+
+
+    @PostMapping(value = "/app/routing", consumes = "application/json")
+    public List<ShortestPath> estimateRouting(@RequestBody Map<String, Object> payload) throws OrekitException {
+
+        List<ShortestPath> shortestPaths = new ArrayList<>();
+        String julianTime = payload.get("time").toString();
+
+        // Get current absolute date based on juliandate
+        DateTime dateTime = DateTime.parse(julianTime.length() > 23 ? julianTime.substring(0, 23)+"Z" : julianTime);        // cut time string
+        AbsoluteDate absoluteDateCurrent = new AbsoluteDate(dateTime.toDate(), TimeScalesFactory.getUTC());
+
+        // Get start/end time of app model
+
+        List<HashMap<String, Object>> applicationDtos = (List<HashMap<String, Object>>) payload.get("appData");
+        for (HashMap<String, Object> hashMap : applicationDtos) {
+
+            // Get current absolute date based on start time.
+            String _startTime = hashMap.get("startTime").toString();
+            String _endTime = hashMap.get("endTime").toString();
+            DateTime _start = DateTime.parse(_startTime);
+            DateTime _end = DateTime.parse(_endTime);
+
+            AbsoluteDate absoluteDateStart = new AbsoluteDate(_start.toDate(), TimeScalesFactory.getUTC());
+            AbsoluteDate absoluteDateEnd = new AbsoluteDate(_end.toDate(), TimeScalesFactory.getUTC());
+
+            if(absoluteDateStart.compareTo(absoluteDateCurrent) <=0 &&
+                    absoluteDateEnd.compareTo(absoluteDateCurrent) >=0){
+
+                // Find the shortest path
+                String source = hashMap.get("source").toString();
+                String dest = hashMap.get("dest").toString();
+
+                shortestPaths.add(getShortestPath(source, dest, absoluteDateCurrent));
+            }
+        }
+
+        return shortestPaths;
+        // getShortestPath(hashMap.get("source").toString(), hashMap.get("dest").toString(), absoluteStartDate);
     }
 
     /**
@@ -558,7 +598,7 @@ public class DataAccessController {
         keplerianPropagator.setSlaveMode();
 
         // Get current absolute date based on juliandate
-        DateTime dateTime = DateTime.parse(julianTime.length() > 23 ? julianTime.substring(0, 23) : julianTime);        // cut time string
+        DateTime dateTime = DateTime.parse(julianTime.length() > 23 ? julianTime.substring(0, 23) + "Z": julianTime);        // cut time string
         AbsoluteDate absoluteDate = new AbsoluteDate(dateTime.toDate(), TimeScalesFactory.getUTC());
 
         // Get orbit status
@@ -1036,7 +1076,17 @@ public class DataAccessController {
     }
 
 
-    private void getShortestPath(String source, String dest, AbsoluteDate absoluteDate) throws OrekitException {
+    /**
+     * Set shortest path
+     * @param source
+     * @param dest
+     * @param absoluteDate
+     * @return
+     * @throws OrekitException
+     */
+    private ShortestPath getShortestPath(String source, String dest, AbsoluteDate absoluteDate) throws OrekitException {
+
+        ShortestPath shortestPath = new ShortestPath();
 
         // Get ground stations.
         List<GroundStation> groundStations = groundStationService.getAll();
@@ -1069,78 +1119,204 @@ public class DataAccessController {
 
         // Get initial orb
         Autoconfiguration.configureOrekit();
-        // Start weight assignment
-//        setWeight(sourceNode, graph, new HashSet<Node>(), absoluteDate);
-        sourceNode.addDestination(destNode, 200);
-        Graph graphResult = Dijkstra.calculateShortestPathFromSource(graph, sourceNode);
 
-        System.out.println("DEBUG Point");
+        // Init source nodes
+        Set<Node> sourceNodes = new HashSet<>();
+        sourceNodes.add(sourceNode);
+        // Start weight assignment
+        setWeight(sourceNodes, graph, new HashSet<Node>(), absoluteDate);
+//        sourceNode.addDestination(destNode, 200);
+        Dijkstra.calculateShortestPathFromSource(graph, sourceNode);
+
+        // Get shortest path to destination
+        destNode.getShortestPath().forEach(node -> {
+            // Check for ground station, need get name back
+            if(node.getType().equals("gs")){
+                GroundStation gs = groundStationService.findById(node.getName());
+                shortestPath.getPath().add(gs.getName());
+            }else{
+                Optional<Tle> tleOptional = tleService.findById(node.getName());
+                if(tleOptional.isPresent())
+                    shortestPath.getPath().add(tleOptional.get().getName());
+            }
+        });
+
+        if(destNode.getType().equals("gs")){
+            GroundStation gs = groundStationService.findById(destNode.getName());
+            shortestPath.getPath().add(gs.getName());
+        }else{
+            Optional<Tle> tleOptional = tleService.findById(destNode.getName());
+            if(tleOptional.isPresent())
+                shortestPath.getPath().add(tleOptional.get().getName());
+        }
+
+        return shortestPath;
 
     }
 
 
-    private void setWeight(Node soureNode,  Graph graph,  Set<Node> evaluatedNodes, AbsoluteDate absoluteDate){
+    /**
+     * Set weight from source to all nodes
+     * @param sourceNodes
+     * @param graph
+     * @param evaluatedNodes
+     * @param absoluteDate
+     */
+    private void setWeight(Set<Node> sourceNodes,  Graph graph,  Set<Node> evaluatedNodes, AbsoluteDate absoluteDate){
 
-        if(evaluatedNodes.contains(soureNode)){
+        if(sourceNodes.size() == 0){
             return;
         }
 
-        evaluatedNodes.add(soureNode);
+        Set<Node> innerSourceNodes = new HashSet<>();
+        for(Node sourceNode : sourceNodes){
+            for(Node targetNode : graph.getNodes()){
+                // skip if target node already in sourceNodes or both ground station
+                if(evaluatedNodes.contains(targetNode)
+                        || sourceNode.getName().equals(targetNode.getName())
+                        || (sourceNode.getType().equals("gs") && targetNode.getType().equals("gs"))){
+                    continue;
+                }
 
-        for(Node node : graph.getNodes()){
-            if( node.getName().equals(soureNode.getName())
-                    || soureNode.getType().equals("gs") && node.getType().equals("gs")){
-                // Skip
-                continue;
-            }
-            // Do compute
-            if(soureNode.getType().equals("satellite")){
-                if(node.getType().equals("satellite")){
-                    // Get both tle
-                    Optional<Tle> tleSourceOptional = tleService.findById(soureNode.getName());
-                    Optional<Tle> tleDestOptional = tleService.findById(node.getName());
+                // for both satellite
+                if(sourceNode.getType().equals("satellite")){
+                    if(targetNode.getType().equals("satellite")){
+                        // Get both tle
+                        Optional<Tle> tleSourceOptional = tleService.findById(sourceNode.getName());
+                        Optional<Tle> tleDestOptional = tleService.findById(targetNode.getName());
 
-                    if(tleSourceOptional.isPresent() && tleDestOptional.isPresent()){
-                        Tle sourceTle = tleSourceOptional.get();
-                        Tle destTle = tleDestOptional.get();
-                        try{
-                            Orbit initialOrbit = getInitialOrb(sourceTle);
-                            /**
-                             * Slave mode
-                             */
-                            KeplerianPropagator keplerianPropagator = new KeplerianPropagator(initialOrbit);
-                            // Set to slave mode
-                            keplerianPropagator.setSlaveMode();
-                            SpacecraftState sourceState = keplerianPropagator.propagate(absoluteDate);
+                        if(tleSourceOptional.isPresent() && tleDestOptional.isPresent()){
+                            Tle sourceTle = tleSourceOptional.get();
+                            Tle destTle = tleDestOptional.get();
+                            try{
+                                Orbit initialOrbit = getInitialOrb(sourceTle);
+                                /**
+                                 * Slave mode
+                                 */
+                                KeplerianPropagator keplerianPropagator = new KeplerianPropagator(initialOrbit);
+                                // Set to slave mode
+                                keplerianPropagator.setSlaveMode();
+                                SpacecraftState sourceState = keplerianPropagator.propagate(absoluteDate);
 
-                            Orbit initialOrbitDest = getInitialOrb(destTle);
-                            keplerianPropagator= new KeplerianPropagator(initialOrbitDest);
-                            keplerianPropagator.setSlaveMode();
-                            SpacecraftState destState = keplerianPropagator.propagate(absoluteDate);
+                                Orbit initialOrbitDest = getInitialOrb(destTle);
+                                keplerianPropagator= new KeplerianPropagator(initialOrbitDest);
+                                keplerianPropagator.setSlaveMode();
+                                SpacecraftState destState = keplerianPropagator.propagate(absoluteDate);
 
-                            // Calculate line of sight
-                            double eta = FastMath.asin(Constants.WGS84_EARTH_EQUATORIAL_RADIUS / sourceState.getPVCoordinates().getPosition().getNorm());
-                            double gamma = Vector3D.angle(sourceState.getPVCoordinates().getPosition().negate(), destState.getPVCoordinates().getPosition().subtract(sourceState.getPVCoordinates().getPosition()));
-                            double distance = Vector3D.distance(sourceState.getPVCoordinates().getPosition(), destState.getPVCoordinates().getPosition());
-                            boolean los = (gamma > eta
-                                    || (
-                                    gamma < eta
-                                            && distance < sourceState.getPVCoordinates().getPosition().getNorm()));
+                                // Calculate line of sight
+                                double eta = FastMath.asin(Constants.WGS84_EARTH_EQUATORIAL_RADIUS / sourceState.getPVCoordinates().getPosition().getNorm());
+                                double gamma = Vector3D.angle(sourceState.getPVCoordinates().getPosition().negate(), destState.getPVCoordinates().getPosition().subtract(sourceState.getPVCoordinates().getPosition()));
+                                double distance = Vector3D.distance(sourceState.getPVCoordinates().getPosition(), destState.getPVCoordinates().getPosition());
+//                                boolean los = (gamma > eta
+//                                        || (
+//                                        gamma < eta
+//                                                && distance < sourceState.getPVCoordinates().getPosition().getNorm()));
+                                double angularVelocity = getAngularVelocity(sourceState, destState);
 
-                            if(los){
-                                soureNode.addDestination(node, distance);
+                                /**
+                                 * Only the link in LOS and met angular velocity requirement.
+                                 */
+                                if(distance < maxDistanceLos && angularVelocity<maxAngularVelocity){
+
+                                    // Reduce to 100KM scale.
+                                    sourceNode.addDestination(targetNode, distance/100000);
+                                    // Add to source Nodes for next evaluation
+                                    innerSourceNodes.add(targetNode);
+                                }
+
+                            }catch (OrekitException e){
+                                //TODO deal with error or throw
                             }
+                        }
+                    }else{
+                        // Source target is ground station.
+                        // Get source tle
+                        Optional<Tle> tleSourceOptional = tleService.findById(sourceNode.getName());
+                        // Get target gs
+                        GroundStation groundStation = groundStationService.findById(targetNode.getName());
+                        if(tleSourceOptional.isPresent()) {
+                            Tle sourceTle = tleSourceOptional.get();
+                            Orbit initialOrbit = null;
+                            try {
+                                initialOrbit = getInitialOrb(sourceTle);
+                                /**
+                                 * Slave mode
+                                 */
+                                KeplerianPropagator keplerianPropagator = new KeplerianPropagator(initialOrbit);
+                                // Set to slave mode
+                                keplerianPropagator.setSlaveMode();
+                                SpacecraftState sourceState = keplerianPropagator.propagate(absoluteDate);
 
-                        }catch (OrekitException e){
-                            //TODO deal with error or throw
+                                Vector3D satellitePosition = sourceState.getPVCoordinates().getPosition();
+                                Vector3D gs3D = new Vector3D(groundStation.getX(), groundStation.getY(), groundStation.getZ());
+                                double distance = Vector3D.distance(satellitePosition, gs3D);
+
+                                // Calculate the max distance
+                                double maxDistance = Math.sqrt(
+                                        Math.pow(satellitePosition.getX(),2) - Math.pow(gs3D.getX(), 2) +
+                                                Math.pow(satellitePosition.getY(),2) - Math.pow(gs3D.getY(), 2) +
+                                                Math.pow(satellitePosition.getZ(),2) - Math.pow(gs3D.getZ(), 2));
+                                if(distance<maxDistance){
+                                    sourceNode.addDestination(targetNode, distance/100000);
+                                    innerSourceNodes.add(targetNode);
+                                }
+
+
+                            } catch (OrekitException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                }else{
+
+                    if(targetNode.getType().equals("satellite")){
+                        // Source target is ground station.
+                        // Get source tle
+                        Optional<Tle> tleTargetOptional = tleService.findById(targetNode.getName());
+                        // Get target gs
+                        GroundStation groundStation = groundStationService.findById(sourceNode.getName());
+                        if(tleTargetOptional.isPresent()) {
+                            Tle targetTle = tleTargetOptional.get();
+                            Orbit initialOrbit = null;
+                            try {
+                                initialOrbit = getInitialOrb(targetTle);
+                                /**
+                                 * Slave mode
+                                 */
+                                KeplerianPropagator keplerianPropagator = new KeplerianPropagator(initialOrbit);
+                                // Set to slave mode
+                                keplerianPropagator.setSlaveMode();
+                                SpacecraftState targetState = keplerianPropagator.propagate(absoluteDate);
+
+                                Vector3D satellitePosition = targetState.getPVCoordinates().getPosition();
+                                Vector3D gs3D = new Vector3D(groundStation.getX(), groundStation.getY(), groundStation.getZ());
+                                double distance = Vector3D.distance(satellitePosition, gs3D);
+
+                                // Calculate the max distance
+                                double maxDistance = Math.sqrt(
+                                        Math.pow(satellitePosition.getX(),2) - Math.pow(gs3D.getX(), 2) +
+                                                Math.pow(satellitePosition.getY(),2) - Math.pow(gs3D.getY(), 2) +
+                                                Math.pow(satellitePosition.getZ(),2) - Math.pow(gs3D.getZ(), 2));
+
+                                if(distance<maxDistance){
+                                    sourceNode.addDestination(targetNode, distance/100000);
+                                    innerSourceNodes.add(targetNode);
+                                }
+
+                            } catch (OrekitException e) {
+                                e.printStackTrace();
+                            }
                         }
                     }
                 }
             }
 
-            System.out.println(evaluatedNodes.size());
-            setWeight(node, graph, evaluatedNodes, absoluteDate);
+            // Add evaluated node to evaluated nodes
+            evaluatedNodes.add(sourceNode);
+            sourceNodes = innerSourceNodes;
         }
+
+        setWeight(sourceNodes, graph, evaluatedNodes, absoluteDate);
     }
 
 
