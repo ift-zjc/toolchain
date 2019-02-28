@@ -290,7 +290,7 @@ $(function(){
                 return $('<div class="toolbar-label"><b>ToolChain Dashboard</b></div>')
             }
         }]
-    })
+    });
 
     toolbar = $('#toolbar').dxToolbar({
         items: [{
@@ -381,6 +381,10 @@ $(function(){
                             //     }
                             //
                             // }).dxTreeView('instance');
+
+                            if(data.satelliteCollections.length > 0){
+                                $('#fileGenerate').dxButton('instance').option('disabled', false);
+                            }
                         },
                         error: function (e){
 
@@ -525,7 +529,104 @@ $(function(){
                 }
             }
         }]
-    })
+    });
+
+    $('#toolbarBottom').dxToolbar({
+        items: [{
+            template: function () {
+                return $('<span class="h6">Start time&nbsp;</span>');
+            },
+            location: 'before'
+
+        },{
+            location: 'before',
+            widget: 'dxDateBox',
+            options: {
+                type: 'datetime',
+                value: new Date(),
+                elementAttr: {
+                    id: 'fileTimeStart'
+                }
+            }
+        },{
+            template: function () {
+                return $('<span class="h6">End time&nbsp;</span>');
+            },
+            location: 'before'
+        },{
+            location: 'before',
+            widget: 'dxDateBox',
+            options: {
+                type: 'datetime',
+                value: new Date(),
+                elementAttr: {
+                    id: 'fileTimeEnd'
+                }
+            }
+        },{
+            template: function(){
+                return $('<span class="h6">Interval (Seconds)&nbsp;</span>');
+            },
+            location: 'before'
+        },{
+            location: 'before',
+            widget: 'dxNumberBox',
+            options: {
+                showSpinButtons: true,
+                value: 10,
+                min: 1,
+                format: '#0 Seconds',
+                elementAttr: {
+                    id: 'fileInterval'
+                }
+            }
+        },{
+            location: 'after',
+            widget: 'dxButton',
+            options: {
+                text: 'Generate Data File',
+                type: 'normal',
+                icon: 'chevrondoubleright',
+                disabled: true,
+                elementAttr: {
+                    id: 'fileGenerate'
+                },
+                onClick: function(){
+                    var _startTime = $('#fileTimeStart').dxDateBox('instance').option('value').toISOString();
+                    var _endTime = $('#fileTimeEnd').dxDateBox('instance').option('value').toISOString();
+                    var _interval = $('#fileInterval').dxNumberBox('instance').option('value');
+
+                    var _data = {timeStart: _startTime, timeEnd: _endTime, timeInterval: _interval};
+
+                    // Generating JSON file
+                    $.ajax({
+                        type: 'POST',
+                        url: '/api/file/los/generate',
+                        data: JSON.stringify(_data),
+                        contentType: 'application/json',
+                        success: function (data){
+
+                        },
+                        error: function (data){}
+                    }).done(function(){
+                        // clean up.
+                    });
+                }
+            }
+        },{
+            location: 'after',
+            widget: 'dxButton',
+            options: {
+                text: 'Download Data File',
+                type: 'normal',
+                icon: 'download',
+                disabled: true,
+                elementAttr: {
+                    id: 'fileDownload'
+                }
+            }
+        }]
+    });
 
     // File uploader
     fileUploader = $('#fileUploader').dxFileUploader({

@@ -511,6 +511,16 @@ public class DataAccessController {
     }
 
 
+    /**
+     * Generate json data file for LOS for time period
+     * @param payload
+     */
+    @PostMapping(value = "/file/los/generate", consumes = "application/json")
+    public void startLosFileGenerate(@RequestBody Map<String, Object> payload){
+        System.out.println("Generating");
+    }
+
+
     @PostMapping(value = "/app/routing", consumes = "application/json")
     public List<ShortestPath> estimateRouting(@RequestBody Map<String, Object> payload) throws OrekitException {
 
