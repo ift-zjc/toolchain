@@ -12,6 +12,7 @@ import com.sun.org.apache.xpath.internal.operations.Lte;
 import org.hipparchus.geometry.euclidean.threed.Vector3D;
 import org.hipparchus.util.FastMath;
 import org.joda.time.DateTime;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.orekit.errors.OrekitException;
 import org.orekit.frames.Frame;
@@ -20,6 +21,7 @@ import org.orekit.orbits.*;
 import org.orekit.orbits.Orbit;
 import org.orekit.propagation.SpacecraftState;
 import org.orekit.propagation.analytical.KeplerianPropagator;
+import org.orekit.propagation.analytical.tle.TLE;
 import org.orekit.propagation.sampling.OrekitFixedStepHandler;
 import org.orekit.time.AbsoluteDate;
 import org.orekit.time.TimeScale;
@@ -27,17 +29,22 @@ import org.orekit.time.TimeScalesFactory;
 import org.orekit.utils.Constants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.StringReader;
+import java.io.*;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.*;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -359,7 +366,7 @@ public class DataAccessController {
         KeplerianPropagator propagator1;
         KeplerianPropagator propagator2;
 
-        // Remove all messageses/msa application settings before start
+        // Remove all messages/msa application settings before start
         messageHubService.removeAll();
         msApplicationService.removeAll();
 
@@ -515,9 +522,168 @@ public class DataAccessController {
      * Generate json data file for LOS for time period
      * @param payload
      */
-    @PostMapping(value = "/file/los/generate", consumes = "application/json")
-    public void startLosFileGenerate(@RequestBody Map<String, Object> payload){
+    @PostMapping(value = "/file/los/generate",
+            consumes = "application/json")
+    @ResponseBody
+    public String startLosFileGenerate(@RequestBody Map<String, Object> payload) throws OrekitException {
         System.out.println("Generating");
+
+        // Config Orekit
+        Autoconfiguration.configureOrekit();
+        // Step as interval
+        int step = Integer.parseInt(payload.get("timeInterval").toString());
+        String startTime = payload.get("timeStart").toString();
+        String endTime = payload.get("timeEnd").toString();
+
+        // Convert to datetime
+        AbsoluteDate startDate = new AbsoluteDate(DateTime.parse(payload.get("timeStart").toString()).toDate(), TimeScalesFactory.getUTC());
+        AbsoluteDate endDate = new AbsoluteDate(DateTime.parse(payload.get("timeEnd").toString()).toDate(), TimeScalesFactory.getUTC());
+
+        // Get all TLEs
+        List<Tle> tleDtos = tleService.getAllTles();
+
+        // Propagator
+        KeplerianPropagator propagator1;
+        KeplerianPropagator propagator2;
+
+//        JSONObject losJson = new JSONObject();
+        JSONObject losData = new JSONObject();
+        losData.put("simTime", startDate.toString());
+        losData.put("simTimeEnd", endDate.toString());
+        losData.put("simDuration", endDate.durationFrom(endDate));
+        losData.put("step", step);
+
+
+        // JSON Array
+        JSONArray stateArray = new JSONArray();
+
+
+        // Loop time step interval
+        while (startDate.compareTo(endDate) <= 0) {
+            // Loop through
+            for (int i = 0; i < tleDtos.size() - 1; i++) {
+
+                Tle tleSource = tleDtos.get(i);
+                Orbit orbit1Init = this.getInitialOrb(tleDtos.get(i));
+                propagator1 = new KeplerianPropagator(orbit1Init);
+                propagator1.setSlaveMode();
+                SpacecraftState state1 = propagator1.propagate(startDate);
+
+                // JSON Object
+                JSONObject sourceObj = new JSONObject();
+                sourceObj.put("sateName", tleSource.getName());
+                sourceObj.put("satID", tleSource.getId());
+                sourceObj.put("PosX", state1.getPVCoordinates().getPosition().getX());
+                sourceObj.put("PosY", state1.getPVCoordinates().getPosition().getY());
+                sourceObj.put("PosZ", state1.getPVCoordinates().getPosition().getZ());
+                sourceObj.put("Time", step*i);
+
+                JSONArray losArray = new JSONArray();
+
+                for (int j = i + 1; j < tleDtos.size(); j++) {
+                    Tle tleDest = tleDtos.get(j);
+                    Orbit orbit2Init = this.getInitialOrb(tleDest);
+                    propagator2 = new KeplerianPropagator(orbit2Init);
+                    propagator2.setSlaveMode();
+
+                    SpacecraftState state2 = propagator2.propagate(startDate);
+
+//                    // Calculate line of sight
+//                    double eta = FastMath.asin(Constants.WGS84_EARTH_EQUATORIAL_RADIUS / state1.getPVCoordinates().getPosition().getNorm());
+//                    double gamma = Vector3D.angle(state1.getPVCoordinates().getPosition().negate(), state2.getPVCoordinates().getPosition().subtract(state1.getPVCoordinates().getPosition()));
+//                    double distance = Vector3D.distance(state1.getPVCoordinates().getPosition(), state2.getPVCoordinates().getPosition());
+//                    boolean los = (gamma > eta
+//                            || (
+//                            gamma < eta
+//                                    && distance < state1.getPVCoordinates().getPosition().getNorm()));
+                    boolean los = checkLoS(state1, state2);
+                    // Get los
+                    JSONObject losObj = new JSONObject();
+                    losObj.put("sateName", tleDest.getName());
+                    losObj.put("satID", tleDest.getId());
+                    losObj.put("PosX", state2.getPVCoordinates().getPosition().getX());
+                    losObj.put("PosY", state2.getPVCoordinates().getPosition().getY());
+                    losObj.put("PosZ", state2.getPVCoordinates().getPosition().getZ());
+                    losObj.put("LoS", los);
+
+                    losArray.add(losObj);
+                }
+
+                sourceObj.put("visibilityGraph", losArray);
+                stateArray.add(sourceObj);
+            }
+
+
+            // Shifting by step.
+            startDate = startDate.shiftedBy(step);
+        }
+
+        losData.put("SateDef", stateArray);
+
+        try {
+            Files.write(Paths.get("C:\\upload-dir\\LOS.json"), losData.toJSONString().getBytes());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return "done";
+    }
+
+
+    /**
+     * Check for LoS
+     * @param source
+     * @param dest
+     * @return
+     */
+    private boolean checkLoS(SpacecraftState source, SpacecraftState dest){
+
+
+        Vector3D satelliteSourcePosition = source.getPVCoordinates().getPosition();
+        Vector3D satelliteDestPosition = dest.getPVCoordinates().getPosition();
+        double distance = Math.sqrt(
+                Math.pow(satelliteSourcePosition.getX() - satelliteDestPosition.getX(), 2)
+                        + Math.pow(satelliteSourcePosition.getY() - satelliteDestPosition.getY(), 2)
+                        + Math.pow(satelliteSourcePosition.getZ() - satelliteDestPosition.getZ(), 2)
+        );
+
+        double sourceDist = Math.sqrt(
+                Math.pow(satelliteSourcePosition.getX(), 2)
+                        + Math.pow(satelliteSourcePosition.getY(), 2)
+                        + Math.pow(satelliteSourcePosition.getZ(), 2)
+        );
+
+        double destDist = Math.sqrt(
+                Math.pow(satelliteDestPosition.getX(), 2)
+                        + Math.pow(satelliteDestPosition.getY(), 2)
+                        + Math.pow(satelliteDestPosition.getZ(), 2)
+        );
+
+        double p = 0.5*(distance+sourceDist+destDist);
+
+        double h = 2*Math.sqrt(p*(p-distance)*(p-sourceDist)*(p-destDist))/distance;
+
+//        if(h<=6357000){System.out.println("LOSSSS");}
+        return h>6357000;
+    }
+
+    @GetMapping(value = "/download/los")
+    public ResponseEntity<Resource> downloadLoS() throws FileNotFoundException {
+
+        File file = new File("C:\\upload-dir\\LOS.json");
+        InputStreamResource resource = new InputStreamResource(new FileInputStream(file));
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+        headers.add("Pragma", "no-cache");
+        headers.add("Expires", "0");
+        headers.add("Content-Disposition", "attachment; filename=\"los.json\"");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .contentLength(file.length())
+                .contentType(MediaType.parseMediaType("application/json"))
+                .body(resource);
     }
 
 
@@ -873,14 +1039,6 @@ public class DataAccessController {
     }
 
     private static class TutorialStepHandler implements OrekitFixedStepHandler {
-
-//        public void init(final SpacecraftState s0, final AbsoluteDate t) {
-//            System.out.println("          date                a           e" +
-//                    "           i         \u03c9          \u03a9" +
-//                    "          \u03bd");
-//        }
-
-
         public void handleStep(SpacecraftState currentState, boolean isLast) {
             KeplerianOrbit o = (KeplerianOrbit) OrbitType.KEPLERIAN.convertType(currentState.getOrbit());
             System.out.format(Locale.US, "%s %12.3f %10.8f %10.6f %10.6f %10.6f %10.6f%n",

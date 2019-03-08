@@ -605,11 +605,12 @@ $(function(){
                         data: JSON.stringify(_data),
                         contentType: 'application/json',
                         success: function (data){
-
+                            console.log(data);
                         },
                         error: function (data){}
                     }).done(function(){
                         // clean up.
+                        $('#fileDownload').dxButton('instance').option('disabled', false);
                     });
                 }
             }
@@ -623,6 +624,8 @@ $(function(){
                 disabled: true,
                 elementAttr: {
                     id: 'fileDownload'
+                }, onClick: function(){
+                    window.open("/api/download/los", "_self", false);
                 }
             }
         }]
