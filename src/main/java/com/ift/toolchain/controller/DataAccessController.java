@@ -621,7 +621,7 @@ public class DataAccessController {
         losData.put("SateDef", stateArray);
 
         try {
-            Files.write(Paths.get("C:\\upload-dir\\LOS.json"), losData.toJSONString().getBytes());
+            Files.write(Paths.get("/var/upload/LOS.json"), losData.toJSONString().getBytes());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -670,7 +670,7 @@ public class DataAccessController {
     @GetMapping(value = "/download/los")
     public ResponseEntity<Resource> downloadLoS() throws FileNotFoundException {
 
-        File file = new File("C:\\upload-dir\\LOS.json");
+        File file = new File("/var/upload/LOS.json");
         InputStreamResource resource = new InputStreamResource(new FileInputStream(file));
 
         HttpHeaders headers = new HttpHeaders();

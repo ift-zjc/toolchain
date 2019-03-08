@@ -38,7 +38,7 @@ public class Autoconfiguration {
         appendIfExists(pathBuffer, new File(home,    "orekit-data"));
         appendIfExists(pathBuffer, new File(home,    ".orekit-data"));
 //        appendIfExists(pathBuffer, "regular-data");
-//        appendIfExists(pathBuffer, "/home/cloud_ift/orekit-data.zip");
+        appendIfExists(pathBuffer, "/var/upload/orekit-data.zip");
         System.setProperty(DataProvidersManager.OREKIT_DATA_PATH, pathBuffer.toString());
 //        System.setProperty(DataProvidersManager.OREKIT_DATA_PATH, "/Users/lastcow_chen/tmp/orekit-data.zip");
 //        System.out.println("==========" + pathBuffer.toString());
