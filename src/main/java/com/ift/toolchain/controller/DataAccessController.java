@@ -551,7 +551,7 @@ public class DataAccessController {
         losData.put("simTime", startDate.toString());
         losData.put("simTimeEnd", endDate.toString());
         losData.put("simDuration", endDate.durationFrom(endDate));
-        losData.put("step", step);
+        losData.put("simTimeInterval", step);
 
 
         // JSON Array
@@ -572,7 +572,7 @@ public class DataAccessController {
                 // JSON Object
                 JSONObject sourceObj = new JSONObject();
                 sourceObj.put("sateName", tleSource.getName());
-                sourceObj.put("satID", tleSource.getId());
+                sourceObj.put("satID", tleSource.getNumber());
                 sourceObj.put("PosX", state1.getPVCoordinates().getPosition().getX());
                 sourceObj.put("PosY", state1.getPVCoordinates().getPosition().getY());
                 sourceObj.put("PosZ", state1.getPVCoordinates().getPosition().getZ());
@@ -600,7 +600,7 @@ public class DataAccessController {
                     // Get los
                     JSONObject losObj = new JSONObject();
                     losObj.put("sateName", tleDest.getName());
-                    losObj.put("satID", tleDest.getId());
+                    losObj.put("satID", tleDest.getNumber());
                     losObj.put("PosX", state2.getPVCoordinates().getPosition().getX());
                     losObj.put("PosY", state2.getPVCoordinates().getPosition().getY());
                     losObj.put("PosZ", state2.getPVCoordinates().getPosition().getZ());
