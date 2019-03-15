@@ -617,7 +617,7 @@ public class DataAccessController {
             }
 
             // Check based on ground station
-            for(int g = 0; g <= groundStations.size(); g++){
+            for(int g = 0; g < groundStations.size(); g++){
 
                 GroundStation gs = groundStations.get(g);
                 // JSON Object
