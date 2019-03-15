@@ -224,7 +224,7 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
         // Add ground station here.
         GroundStation groundStation = new GroundStation();
         groundStation.setName("Hawaii");
-        groundStation.setStationId("Hawaii");
+        groundStation.setStationId("3");
         groundStation.setX(-5.4631*1000000);
         groundStation.setY(-2.4802*1000000);
         groundStation.setZ(2.1570*1000000);
@@ -232,7 +232,7 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
 
         groundStation = new GroundStation();
         groundStation.setName("Cape Canaveral");
-        groundStation.setStationId("Cape Canaveral");
+        groundStation.setStationId("2");
         groundStation.setX(0.9189*1000000);
         groundStation.setY(-5.5343*1000000);
         groundStation.setZ(3.0242*1000000);
@@ -240,7 +240,7 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
 
         groundStation = new GroundStation();
         groundStation.setName("Ascension");
-        groundStation.setStationId("Ascension");
+        groundStation.setStationId("4");
         groundStation.setX(6.1200*1000000);
         groundStation.setY(-1.5663*1000000);
         groundStation.setZ(-0.8759*1000000);
@@ -248,7 +248,7 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
 
         groundStation = new GroundStation();
         groundStation.setName("Diego Garcia");
-        groundStation.setStationId("Diego Garcia");
+        groundStation.setStationId("5");
         groundStation.setX(1.9105*1000000);
         groundStation.setY(6.0311*1000000);
         groundStation.setZ(-0.8072*1000000);
@@ -256,7 +256,7 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
 
         groundStation = new GroundStation();
         groundStation.setName("Kwajalein");
-        groundStation.setStationId("Kwajalein");
+        groundStation.setStationId("6");
         groundStation.setX(-6.1610*1000000);
         groundStation.setY(1.3396*1000000);
         groundStation.setZ(0.9602*1000000);
@@ -264,7 +264,7 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
 
         groundStation = new GroundStation();
         groundStation.setName("Schriever AFB");
-        groundStation.setStationId("Schriever AFB");
+        groundStation.setStationId("1");
         groundStation.setX(-1.2482*1000000);
         groundStation.setY(-4.8176*1000000);
         groundStation.setZ(3.9758*1000000);

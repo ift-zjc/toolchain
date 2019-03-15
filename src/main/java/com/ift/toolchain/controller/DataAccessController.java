@@ -622,8 +622,8 @@ public class DataAccessController {
                 GroundStation gs = groundStations.get(g);
                 // JSON Object
                 JSONObject sourceObj = new JSONObject();
-                sourceObj.put("sateName", gs.getName());
-                sourceObj.put("satID", gs.getStationId());
+                sourceObj.put("BSName", gs.getName());
+                sourceObj.put("BSID", gs.getStationId());
                 sourceObj.put("PosX", gs.getX());
                 sourceObj.put("PosY", gs.getY());
                 sourceObj.put("PosZ", gs.getZ());
