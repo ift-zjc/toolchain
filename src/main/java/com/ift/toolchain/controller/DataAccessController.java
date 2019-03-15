@@ -631,7 +631,7 @@ public class DataAccessController {
 
                 JSONArray losArray = new JSONArray();
 
-                for (int j = i + 1; j < tleDtos.size(); j++) {
+                for (int j = 0; j < tleDtos.size(); j++) {
                     Tle tleDest = tleDtos.get(j);
                     Orbit orbit2Init = this.getInitialOrb(tleDest);
                     propagator2 = new KeplerianPropagator(orbit2Init);
