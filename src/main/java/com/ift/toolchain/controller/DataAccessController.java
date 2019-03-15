@@ -542,6 +542,9 @@ public class DataAccessController {
         // Get all TLEs
         List<Tle> tleDtos = tleService.getAllTles();
 
+        // Get all base stations
+        List<GroundStation> groundStations = groundStationService.getAll();
+
         // Propagator
         KeplerianPropagator propagator1;
         KeplerianPropagator propagator2;
@@ -576,7 +579,7 @@ public class DataAccessController {
                 sourceObj.put("PosX", state1.getPVCoordinates().getPosition().getX());
                 sourceObj.put("PosY", state1.getPVCoordinates().getPosition().getY());
                 sourceObj.put("PosZ", state1.getPVCoordinates().getPosition().getZ());
-                sourceObj.put("Time", step*i);
+                sourceObj.put("Time", startDate.toString());
 
                 JSONArray losArray = new JSONArray();
 
@@ -596,7 +599,46 @@ public class DataAccessController {
 //                            || (
 //                            gamma < eta
 //                                    && distance < state1.getPVCoordinates().getPosition().getNorm()));
-                    boolean los = checkLoS(state1, state2);
+                    boolean los = checkLoS(state1, state2, "SS");
+                    // Get los
+                    JSONObject losObj = new JSONObject();
+                    losObj.put("sateName", tleDest.getName());
+                    losObj.put("satID", tleDest.getNumber());
+                    losObj.put("PosX", state2.getPVCoordinates().getPosition().getX());
+                    losObj.put("PosY", state2.getPVCoordinates().getPosition().getY());
+                    losObj.put("PosZ", state2.getPVCoordinates().getPosition().getZ());
+                    losObj.put("LoS", los);
+
+                    losArray.add(losObj);
+                }
+
+                sourceObj.put("visibilityGraph", losArray);
+                stateArray.add(sourceObj);
+            }
+
+            // Check based on ground station
+            for(int g = 0; g <= groundStations.size(); g++){
+
+                GroundStation gs = groundStations.get(g);
+                // JSON Object
+                JSONObject sourceObj = new JSONObject();
+                sourceObj.put("sateName", gs.getName());
+                sourceObj.put("satID", gs.getStationId());
+                sourceObj.put("PosX", gs.getX());
+                sourceObj.put("PosY", gs.getY());
+                sourceObj.put("PosZ", gs.getZ());
+                sourceObj.put("Time", startDate.toString());
+
+                JSONArray losArray = new JSONArray();
+
+                for (int j = i + 1; j < tleDtos.size(); j++) {
+                    Tle tleDest = tleDtos.get(j);
+                    Orbit orbit2Init = this.getInitialOrb(tleDest);
+                    propagator2 = new KeplerianPropagator(orbit2Init);
+                    propagator2.setSlaveMode();
+
+                    SpacecraftState state2 = propagator2.propagate(startDate);
+                    boolean los = checkLoS(gs, state2, "GS");
                     // Get los
                     JSONObject losObj = new JSONObject();
                     losObj.put("sateName", tleDest.getName());
@@ -636,27 +678,53 @@ public class DataAccessController {
      * @param dest
      * @return
      */
-    private boolean checkLoS(SpacecraftState source, SpacecraftState dest){
+    private boolean checkLoS(Object source, SpacecraftState dest, String type){
+
+        Double sourceX = 0d;
+        Double sourceY = 0d;
+        Double sourceZ = 0d;
+
+        Double destX = 0d;
+        Double destY = 0d;
+        Double destZ = 0d;
+
+        if(type.equalsIgnoreCase("SS")) {
+            Vector3D satelliteSourcePosition = ((SpacecraftState)source).getPVCoordinates().getPosition();
+
+            sourceX = satelliteSourcePosition.getX();
+            sourceY = satelliteSourcePosition.getY();
+            sourceZ = satelliteSourcePosition.getZ();
 
 
-        Vector3D satelliteSourcePosition = source.getPVCoordinates().getPosition();
+        }else if(type.equalsIgnoreCase("GS")){
+            GroundStation gs = (GroundStation) source;
+
+            sourceX = gs.getX();
+            sourceY = gs.getY();
+            sourceZ = gs.getZ();
+        }
+
         Vector3D satelliteDestPosition = dest.getPVCoordinates().getPosition();
+        destX = satelliteDestPosition.getX();
+        destY = satelliteDestPosition.getY();
+        destZ = satelliteDestPosition.getZ();
+
         double distance = Math.sqrt(
-                Math.pow(satelliteSourcePosition.getX() - satelliteDestPosition.getX(), 2)
-                        + Math.pow(satelliteSourcePosition.getY() - satelliteDestPosition.getY(), 2)
-                        + Math.pow(satelliteSourcePosition.getZ() - satelliteDestPosition.getZ(), 2)
+                Math.pow(sourceX - destX, 2)
+                        + Math.pow(sourceY - destY, 2)
+                        + Math.pow(sourceZ - destZ, 2)
         );
 
         double sourceDist = Math.sqrt(
-                Math.pow(satelliteSourcePosition.getX(), 2)
-                        + Math.pow(satelliteSourcePosition.getY(), 2)
-                        + Math.pow(satelliteSourcePosition.getZ(), 2)
+                Math.pow(sourceX, 2)
+                        + Math.pow(sourceY, 2)
+                        + Math.pow(sourceZ, 2)
         );
 
         double destDist = Math.sqrt(
-                Math.pow(satelliteDestPosition.getX(), 2)
-                        + Math.pow(satelliteDestPosition.getY(), 2)
-                        + Math.pow(satelliteDestPosition.getZ(), 2)
+                Math.pow(destX, 2)
+                        + Math.pow(destY, 2)
+                        + Math.pow(destZ, 2)
         );
 
         double p = 0.5*(distance+sourceDist+destDist);
