@@ -553,8 +553,10 @@ public class DataAccessController {
         JSONObject losData = new JSONObject();
         losData.put("simTime", startDate.toString());
         losData.put("simTimeEnd", endDate.toString());
-        losData.put("simDuration", endDate.durationFrom(endDate));
-        losData.put("simTimeInterval", step);
+        losData.put("simDuration", endDate.durationFrom(startDate));
+        losData.put("simPeriodSecs", step);
+        losData.put("satNodeCount", tleDtos.size());
+        losData.put("gsNodeCount", groundStations.size());
 
 
         // JSON Array
