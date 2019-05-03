@@ -8,12 +8,13 @@ import com.ift.toolchain.dijkstra.Node;
 import com.ift.toolchain.dto.*;
 import com.ift.toolchain.dto.SatelliteXSatellite;
 import com.ift.toolchain.model.*;
-import com.sun.org.apache.xpath.internal.operations.Lte;
 import org.hipparchus.geometry.euclidean.threed.Vector3D;
 import org.hipparchus.util.FastMath;
 import org.joda.time.DateTime;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 import org.orekit.errors.OrekitException;
 import org.orekit.frames.Frame;
 import org.orekit.frames.FramesFactory;
@@ -21,7 +22,6 @@ import org.orekit.orbits.*;
 import org.orekit.orbits.Orbit;
 import org.orekit.propagation.SpacecraftState;
 import org.orekit.propagation.analytical.KeplerianPropagator;
-import org.orekit.propagation.analytical.tle.TLE;
 import org.orekit.propagation.sampling.OrekitFixedStepHandler;
 import org.orekit.time.AbsoluteDate;
 import org.orekit.time.TimeScale;
@@ -32,6 +32,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -44,7 +45,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.*;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -187,29 +187,74 @@ public class DataAccessController {
             // Get TLE file
 //            ConfigFile tleFile= configFileService.getConfigFile("TLE");
             Path path = storageService.load(filename);
-            List<String> tleList = new ArrayList<>();
-            try (Stream<String> stream = Files.lines(path)) {
-                tleList = stream.collect(Collectors.toList());
-            } catch (IOException e) {
-                e.printStackTrace();
+            if(path.toString().endsWith("tle")) {
+                List<String> tleList = new ArrayList<>();
+                try (Stream<String> stream = Files.lines(path)) {
+                    tleList = stream.collect(Collectors.toList());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                List<Tle> tleDtos = convertToTleDto(tleList);
+
+                /**
+                 * Generate orbit
+                 */
+                List<SatelliteCollection> satelliteCollections = new ArrayList<>();
+                Autoconfiguration.configureOrekit();
+
+                int satelliteCnt = tleDtos.size();
+                float index = 1f;
+                for (Tle item : tleDtos) {
+                    try {
+                        tleService.save(item);
+                    } catch (Exception ex) {
+                        // TODO handle DB exception, ignore now.
+                        // Database error, most for duplicated record
+                    }
+
+                }
             }
 
-            List<Tle> tleDtos = convertToTleDto(tleList);
-
-            /**
-             * Generate orbit
-             */
-            List<SatelliteCollection> satelliteCollections = new ArrayList<>();
-            Autoconfiguration.configureOrekit();
-
-            int satelliteCnt = tleDtos.size();
-            float index = 1f;
-            for (Tle item : tleDtos) {
+            // Check for configuration file
+            if(path.toString().endsWith("configuration.json")){
+                // Parsing the configuration file.
+                JSONParser jsonParser = new JSONParser();
                 try {
-                    tleService.save(item);
-                } catch (Exception ex) {
-                    // TODO handle DB exception, ignore now.
-                    // Database error, most for duplicated record
+                    JSONObject jsonObject = (JSONObject) jsonParser.parse(Files.newBufferedReader(path));
+                    JSONObject rootJsonObj = (JSONObject) jsonObject.get("SatcomScnDef");
+                    JSONArray satelliteJsonArray = (JSONArray) rootJsonObj.get("sateDef");
+                    // Loop satellites description and write to db
+                    for(Object satelliteObj : satelliteJsonArray){
+                        JSONObject satelliteJsonObj = (JSONObject) satelliteObj;
+                        Satellite satellite = new Satellite();
+                        satellite.setName(satelliteJsonObj.get("satName").toString());
+                        satellite.setSatelliteId(satelliteJsonObj.get("satID").toString());
+
+                        List<Parameter> parameters = new ArrayList<>();
+                        // Get all parameters.
+                        JSONArray configJsonArray = (JSONArray) satelliteJsonObj.get("Config");
+                        // Loop
+                        for(Object configObj : configJsonArray){
+                            JSONObject configJsonObj = (JSONObject) configObj;
+
+                            Parameter parameter = new Parameter();
+                            parameter.setSatellite(satellite);
+                            parameter.setName(configJsonObj.get("paraName").toString());
+                            parameter.setValue(configJsonObj.get("value").toString());
+
+                            parameters.add(parameter);
+                        }
+
+                        satellite.setSatelliteParams(parameters);
+                        satelliteService.save(satellite);
+                    }
+
+                    System.out.println("Parsed");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (ParseException e) {
+                    e.printStackTrace();
                 }
 
             }
@@ -1624,5 +1669,56 @@ public class DataAccessController {
                 // Satellite
             }
         }
+    }
+
+    /**
+     * Get initial settings
+     * @return
+     */
+    @GetMapping(value = "/settings/init", produces = "application/json")
+    public SettingsInit getSettingInit() {
+
+        SettingsInit settingsInit = new SettingsInit();
+        List<SatelliteSettings> satelliteSettings = new ArrayList<SatelliteSettings>();
+
+        List<Satellite> satellites = satelliteService.getAll();
+
+
+        satellites.forEach(satellite -> {
+            SatelliteSettings satelliteSetting = new SatelliteSettings();
+            satelliteSetting.setSatID(satellite.getSatelliteId());
+            satelliteSetting.setSatName(satellite.getName());
+
+            // Properties
+            List<Parameter> parameters = satellite.getSatelliteParams();
+            parameters.forEach(parameter -> {
+                if(parameter.getName().equalsIgnoreCase("outLinkMax")){
+                    satelliteSetting.setOutLinkMax(Float.parseFloat(parameter.getValue()));
+                }
+
+                if(parameter.getName().equalsIgnoreCase("inLinkMax")){
+                    satelliteSetting.setInLinkMax(Float.parseFloat(parameter.getValue()));
+                }
+
+                if(parameter.getName().equalsIgnoreCase("netIfnum")){
+                    satelliteSetting.setNetIfnum(Float.parseFloat(parameter.getValue()));
+                }
+            });
+
+            satelliteSettings.add(satelliteSetting);
+        });
+
+        settingsInit.setSatelliteSettings(satelliteSettings);
+
+        return settingsInit;
+    }
+
+
+    @PostMapping(value = "/connectionDisplay")
+    @ResponseStatus(HttpStatus.OK)
+    public void setConnectionDisplay(@RequestBody ConnDisplayDto connectionDisplay){
+
+        System.out.println("Connection Display");
+
     }
 }

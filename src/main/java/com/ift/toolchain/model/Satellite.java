@@ -31,6 +31,6 @@ public class Satellite {
     @OneToMany(mappedBy = "satelliteb")
     private List<SatelliteXSatellite> satelliteXSatellitesB;
 
-    @OneToMany(mappedBy = "satellite")
+    @OneToMany(mappedBy = "satellite", cascade = CascadeType.ALL)
     private List<Parameter> satelliteParams;
 }
