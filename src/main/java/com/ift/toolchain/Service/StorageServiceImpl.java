@@ -33,8 +33,8 @@ public class StorageServiceImpl implements StorageService {
     private final Path rootLocation;
 
     public StorageServiceImpl() {
-//        this.rootLocation = Paths.get("c:\\upload-dir\\").toAbsolutePath().normalize();
-        this.rootLocation = Paths.get("/var/upload").toAbsolutePath().normalize();
+        this.rootLocation = Paths.get("c:\\upload-dir\\").toAbsolutePath().normalize();
+//        this.rootLocation = Paths.get("/var/upload").toAbsolutePath().normalize();
     }
 
 

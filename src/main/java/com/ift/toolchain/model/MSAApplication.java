@@ -31,4 +31,7 @@ public class MSAApplication {
 
     @OneToMany(mappedBy = "applicationTrafficModel")
     private List<AppTrafficData> trafficData;
+
+    @OneToMany(mappedBy = "msaApplication")
+    private List<MSAApplicationEvent> applicationEvents;
 }

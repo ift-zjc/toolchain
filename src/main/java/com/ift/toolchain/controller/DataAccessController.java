@@ -1,5 +1,7 @@
 package com.ift.toolchain.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ift.toolchain.Service.*;
 import com.ift.toolchain.configuration.Autoconfiguration;
 import com.ift.toolchain.dijkstra.Dijkstra;
@@ -29,6 +31,7 @@ import org.orekit.time.TimeScalesFactory;
 import org.orekit.utils.Constants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -74,9 +77,19 @@ public class DataAccessController {
     @Autowired
     AppTrafficDataService appTrafficDataService;
 
+    @Autowired
+    SocketService socketService;
+    @Autowired
+    MSAApplicationEventService applicationEventService;
+
     private final double maxAngularVelocity = 0.000087;
     private final double maxDistanceLos = 51591*1000;
     private final double maxCornDistance = 5.5E7;
+
+    @Value("${mininet.ip}")
+    private String mininetIP;
+    @Value("${mininet.port}")
+    private int minietPort;
 
 
     /**
@@ -251,6 +264,14 @@ public class DataAccessController {
                     }
 
                     System.out.println("Parsed");
+
+                    // Send notification
+                    try {
+                        socketService.sendDataToSocket(mininetIP, minietPort, "start");
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
                 } catch (IOException e) {
                     e.printStackTrace();
                 } catch (ParseException e) {
@@ -259,6 +280,7 @@ public class DataAccessController {
 
             }
         });
+
     }
 
     /**
@@ -381,6 +403,8 @@ public class DataAccessController {
         return satellitePopulated;
     }
 
+    @Value("${simulation.step}")
+    private int step;
     /**
      * Start simulator
      *
@@ -392,7 +416,6 @@ public class DataAccessController {
     public SimulateData startSimulator(@RequestBody Map<String, Object> payload) throws OrekitException {
 
         Autoconfiguration.configureOrekit();
-        int step = 30;      // second
         float delta = 0.05f;  // 10%;
         String startTime = payload.get("timeStart").toString();
         String endTime = payload.get("timeEnd").toString();
@@ -540,6 +563,33 @@ public class DataAccessController {
 
             List<ApplicationTrafficData> applicationTrafficDataList = trafficeModelService.simulate(_start, _end, trafficModelExtracted.getTrafficModelConfigs(), applicationTraffic.getAppName());
             applicationTraffic.setApplicationTrafficDataList(applicationTrafficDataList);
+
+            // Convert to datetime
+            DateTime appStartDateTie = DateTime.parse(hashMap.get("startTime").toString());
+            DateTime appEndDateTime = DateTime.parse(hashMap.get("endTime").toString());
+            AbsoluteDate appAbsoluteStartDate = new AbsoluteDate(appStartDateTie.toDate(), TimeScalesFactory.getUTC());
+            AbsoluteDate appAbsoluteEndDate = new AbsoluteDate(appEndDateTime.toDate(), TimeScalesFactory.getUTC());
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            // Loop on step base.
+            while (appAbsoluteStartDate.compareTo(appAbsoluteEndDate) <= 0) {
+
+                MSAApplicationEvent applicationEvent = new MSAApplicationEvent();
+                applicationEvent.setMsaApplication(msaApplication);
+
+
+                // Get routing
+                ShortestPath shortestPath = getShortestPath(hashMap.get("source").toString(), hashMap.get("dest").toString(), appAbsoluteStartDate);
+                // Save to database
+                try {
+                    String routingJsn = objectMapper.writeValueAsString(shortestPath);
+                } catch (JsonProcessingException e) {
+                    e.printStackTrace();
+                }
+
+                // Moveforward step seconds
+                appAbsoluteStartDate = appAbsoluteStartDate.shiftedBy(step);
+            }
 
             // Save those data to database before end loop
             AppTrafficData appTrafficData = null;

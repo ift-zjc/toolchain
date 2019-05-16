@@ -1,6 +1,6 @@
 
 server:
-  port: 8080
+  port: 8888
 
 fcm:
   service-account-file: C:\\Users\\zhijiang\\Documents\\Projects\\toolchain\\ift-demo-20180724-firebase-adminsdk-g7o1b-afa0269793.json
@@ -32,3 +32,10 @@ data:
 file:
   upload:
     basedir: C:\\upload-dir
+
+simulation:
+  step: 30
+
+mininet:
+  ip: 192.168.1.3
+  port: 2222
