@@ -36,6 +36,11 @@ public class SatelliteServiceImpl implements SatelliteService {
     }
 
     @Override
+    public Satellite findBySatelliteId(String satelliteId) {
+        return satelliteRepository.findBySatelliteId(satelliteId);
+    }
+
+    @Override
     public Satellite findByName(String satelliteName) {
         return satelliteRepository.findSatelliteByName(satelliteName);
     }

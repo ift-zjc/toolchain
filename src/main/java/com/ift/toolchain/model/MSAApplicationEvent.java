@@ -16,6 +16,7 @@ public class MSAApplicationEvent {
 
     private String tick;
     private String routing;
+    private String distanceJson;
 
     @ManyToOne
     @JoinColumn(name = "app_id")

@@ -576,16 +576,40 @@ public class DataAccessController {
 
                 MSAApplicationEvent applicationEvent = new MSAApplicationEvent();
                 applicationEvent.setMsaApplication(msaApplication);
-
+                applicationEvent.setTick(appAbsoluteStartDate.toString());
 
                 // Get routing
                 ShortestPath shortestPath = getShortestPath(hashMap.get("source").toString(), hashMap.get("dest").toString(), appAbsoluteStartDate);
                 // Save to database
                 try {
-                    String routingJsn = objectMapper.writeValueAsString(shortestPath);
+                    String routingJson = objectMapper.writeValueAsString(shortestPath);
+                    applicationEvent.setRouting(routingJson);
                 } catch (JsonProcessingException e) {
                     e.printStackTrace();
                 }
+
+                LinkedList<Double> distanceLinkedList = new LinkedList<>();
+                try{
+                    // Get distance
+                    for(int i = 0; i<shortestPath.getPathById().size()-1; i++){
+                        String idFirst = shortestPath.getPathById().get(i);
+                        String idNext = shortestPath.getPathById().get(i+1);
+
+                        // Distance
+                        distanceLinkedList.add(getDistance(idFirst, idNext, absoluteStartDate));
+                    }
+                }catch(OrekitException ex){
+                    ex.printStackTrace();
+                }
+
+                try {
+                    applicationEvent.setDistanceJson(objectMapper.writeValueAsString(distanceLinkedList));
+                } catch (JsonProcessingException e) {
+                    e.printStackTrace();
+                }
+
+                // Save to database
+                applicationEventService.save(applicationEvent);
 
                 // Moveforward step seconds
                 appAbsoluteStartDate = appAbsoluteStartDate.shiftedBy(step);
@@ -608,6 +632,12 @@ public class DataAccessController {
         SimulateData simulateData = new SimulateData();
         simulateData.setSimulateResultDtos(null);
         simulateData.setApplicationTraffic(applicationTraffics);
+
+        try {
+            socketService.sendDataToSocket(mininetIP, minietPort, "events");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         return simulateData;
     }
@@ -1467,20 +1497,26 @@ public class DataAccessController {
             if(node.getType().equals("gs")){
                 GroundStation gs = groundStationService.findById(node.getName());
                 shortestPath.getPath().add(gs.getName());
+                shortestPath.getPathById().add(gs.getStationId());
             }else{
                 Optional<Tle> tleOptional = tleService.findById(node.getName());
-                if(tleOptional.isPresent())
+                if(tleOptional.isPresent()) {
                     shortestPath.getPath().add(tleOptional.get().getName());
+                    shortestPath.getPathById().add(tleOptional.get().getNumber());
+                }
             }
         });
 
         if(destNode.getType().equals("gs")){
             GroundStation gs = groundStationService.findById(destNode.getName());
             shortestPath.getPath().add(gs.getName());
+            shortestPath.getPathById().add(gs.getStationId());
         }else{
             Optional<Tle> tleOptional = tleService.findById(destNode.getName());
-            if(tleOptional.isPresent())
+            if(tleOptional.isPresent()) {
                 shortestPath.getPath().add(tleOptional.get().getName());
+                shortestPath.getPathById().add(tleOptional.get().getNumber());
+            }
         }
 
         return shortestPath;
@@ -1722,6 +1758,75 @@ public class DataAccessController {
     }
 
     /**
+     * Get Distance between any two object
+     * @param sourceId
+     * @param destId
+     * @param absoluteDate
+     * @return
+     * @throws OrekitException
+     */
+    private double getDistance(String sourceId, String destId, AbsoluteDate absoluteDate) throws OrekitException {
+
+        double distance;
+        Object source;
+        Object dest;
+        Optional<Satellite> satellite = Optional.ofNullable(satelliteService.findBySatelliteId(sourceId));
+        if(!satellite.isPresent()){
+            GroundStation groundStation = groundStationService.findByGroundStationId(sourceId);
+            source = groundStation;
+        }else{
+            source = satellite.get();
+        }
+
+        Optional<Satellite> satelliteDest = Optional.ofNullable(satelliteService.findBySatelliteId(destId));
+        if(!satelliteDest.isPresent()){
+            dest = groundStationService.findByGroundStationId(destId);
+        }else{
+            dest = satelliteDest.get();
+        }
+
+        Vector3D sourceVector3D = getVector3D(source, absoluteDate);
+        Vector3D destVector3D = getVector3D(dest, absoluteDate);
+
+        distance = Vector3D.distance(sourceVector3D, destVector3D);
+
+        return distance;
+    }
+
+
+    /**
+     * Get Vector3D based on object and time
+     * @param obj
+     * @param absoluteDate
+     * @return
+     * @throws OrekitException
+     */
+    private Vector3D getVector3D(Object obj, AbsoluteDate absoluteDate) throws OrekitException {
+
+        Vector3D vector3D = null;
+        if(obj instanceof Satellite){
+            Optional<Tle> currentTleOpt = tleService.findBySatelliteId(((Satellite)obj).getSatelliteId());
+            if(currentTleOpt.isPresent()) {
+                Tle currentTle = currentTleOpt.get();
+                // init orbit
+                Orbit orbit1Init = this.getInitialOrb(currentTle);
+                KeplerianPropagator keplerianPropagator = new KeplerianPropagator(orbit1Init);
+                keplerianPropagator.setSlaveMode();
+
+                // Get spacecraft state
+                SpacecraftState currentState = keplerianPropagator.propagate(absoluteDate);
+                vector3D = currentState.getPVCoordinates().getPosition();
+            }
+        }else{
+            GroundStation groundStation = (GroundStation) obj;
+            vector3D = new Vector3D(groundStation.getX(),groundStation.getY(),groundStation.getZ());
+        }
+
+        return vector3D;
+
+    }
+
+    /**
      * Get initial settings
      * @return
      */
@@ -1729,7 +1834,7 @@ public class DataAccessController {
     public SettingsInit getSettingInit() {
 
         SettingsInit settingsInit = new SettingsInit();
-        List<SatelliteSettings> satelliteSettings = new ArrayList<SatelliteSettings>();
+        List<SatelliteSettings> satelliteSettings = new ArrayList<>();
 
         List<Satellite> satellites = satelliteService.getAll();
 
@@ -1758,9 +1863,54 @@ public class DataAccessController {
             satelliteSettings.add(satelliteSetting);
         });
 
+        // ground station data
+        List<GroundStation> groundStations = groundStationService.getAll();
+        List<BaseStationSettings> baseStationSettings = new ArrayList<>();
+        groundStations.forEach(groundStation -> {
+            BaseStationSettings bs = new BaseStationSettings();
+            bs.setName(groundStation.getName());
+            bs.setId(groundStation.getStationId());
+
+            baseStationSettings.add(bs);
+        });
+
         settingsInit.setSatelliteSettings(satelliteSettings);
+        settingsInit.setBaseStationSettings(baseStationSettings);
 
         return settingsInit;
+    }
+
+
+    /**
+     * Get list data for Mininet
+     * @return
+     */
+    @GetMapping(value = "/data/applications", produces = "application/json")
+    public List<ApplicationDataMininetDto> getApplications(){
+
+        List<ApplicationDataMininetDto> dataMininetDtos = new ArrayList<>();
+        List<MSAApplication> applications = msApplicationService.getApplications();
+
+        applications.forEach(app->{
+            ApplicationDataMininetDto applicationDataMininetDto = new ApplicationDataMininetDto();
+            applicationDataMininetDto.setAppName(app.getAppName());
+            applicationDataMininetDto.setStartTime(app.getStartTime().toString());
+            applicationDataMininetDto.setEndTime(app.getEndTime().toString());
+            applicationDataMininetDto.setProtocol(app.getProtocol());
+            List<ApplicationEventDto> applicationEventDtos = new ArrayList<>();
+            app.getApplicationEvents().forEach(applicationEvent -> {
+                ApplicationEventDto eventDto = new ApplicationEventDto();
+                eventDto.setPath(applicationEvent.getRouting());
+                eventDto.setThroughput(new Random().nextInt(100));
+                eventDto.setTimetick(applicationEvent.getTick());
+                eventDto.setDistance(applicationEvent.getDistanceJson());
+                applicationEventDtos.add(eventDto);
+            });
+            applicationDataMininetDto.setEvents(applicationEventDtos);
+            dataMininetDtos.add(applicationDataMininetDto);
+        });
+
+        return dataMininetDtos;
     }
 
 

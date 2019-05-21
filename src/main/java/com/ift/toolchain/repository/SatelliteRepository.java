@@ -11,5 +11,7 @@ public interface SatelliteRepository extends JpaRepository<Satellite, String> {
 
     public Satellite findSatelliteByName(String satelliteName);
 
+    public Satellite findBySatelliteId(String satelliteId);
+
     public List<Satellite> findAllByOrbitName(String orbitName);
 }

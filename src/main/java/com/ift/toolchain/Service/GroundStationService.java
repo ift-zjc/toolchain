@@ -9,4 +9,5 @@ public interface GroundStationService {
     public List<GroundStation> getAll();
     public GroundStation findById(String id);
     public GroundStation findByName(String name);
+    public GroundStation findByGroundStationId(String stationId);
 }

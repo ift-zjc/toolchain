@@ -9,4 +9,5 @@ public class ShortestPath {
 
     private String appName;
     private LinkedList<String> path = new LinkedList<>();
+    private LinkedList<String> pathById = new LinkedList<>();
 }

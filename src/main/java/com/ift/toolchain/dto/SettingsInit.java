@@ -10,4 +10,6 @@ public class SettingsInit {
 
     @JsonProperty("satellites")
     private List<SatelliteSettings> satelliteSettings;
+    @JsonProperty("basestations")
+    private List<BaseStationSettings> baseStationSettings;
 }

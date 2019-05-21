@@ -5,6 +5,8 @@ import com.ift.toolchain.repository.MSApplicationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class MSApplicationService {
 
@@ -13,6 +15,10 @@ public class MSApplicationService {
 
     public void removeAll(){
         msApplicationRepository.deleteAll();
+    }
+
+    public List<MSAApplication> getApplications(){
+        return msApplicationRepository.findAll();
     }
 
     public MSAApplication add(MSAApplication msaApplication){

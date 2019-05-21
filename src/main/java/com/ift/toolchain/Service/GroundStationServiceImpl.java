@@ -32,4 +32,9 @@ public class GroundStationServiceImpl implements GroundStationService {
     public GroundStation findByName(String name) {
         return groundStationRepository.findByName(name);
     }
+
+    @Override
+    public GroundStation findByGroundStationId(String stationId) {
+        return groundStationRepository.findByStationId(stationId);
+    }
 }

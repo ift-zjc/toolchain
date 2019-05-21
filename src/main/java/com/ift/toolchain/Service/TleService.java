@@ -47,6 +47,10 @@ public class TleService {
         return tleRepository.findById(id);
     }
 
+    public Optional<Tle> findBySatelliteId(String id){
+        return tleRepository.findByNumber(id);
+    }
+
     /**
      * Remove all records
      */
