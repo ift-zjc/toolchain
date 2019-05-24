@@ -539,12 +539,18 @@ public class DataAccessController {
                 continue;
             }
 
+            // Convert to datetime
+            DateTime appStartDateTie = DateTime.parse(hashMap.get("startTime").toString());
+            DateTime appEndDateTime = DateTime.parse(hashMap.get("endTime").toString());
+            AbsoluteDate appAbsoluteStartDate = new AbsoluteDate(appStartDateTie.toDate(), TimeScalesFactory.getUTC());
+            AbsoluteDate appAbsoluteEndDate = new AbsoluteDate(appEndDateTime.toDate(), TimeScalesFactory.getUTC());
+
             // Save to database before proc.
             MSAApplication msaApplication = new MSAApplication();
             msaApplication.setAppName(appName);
             msaApplication.setProtocol(hashMap.get("protocol").toString());
-            msaApplication.setStartTime(_start.toDate());
-            msaApplication.setEndTime(_end.toDate());
+            msaApplication.setStartTime(DateTime.parse(appAbsoluteStartDate.toString()).toDate());
+            msaApplication.setEndTime(DateTime.parse(appAbsoluteEndDate.toString()).toDate());
             msaApplication.setSourceObj(hashMap.get("source").toString());
             msaApplication.setDestObj(hashMap.get("dest").toString());
             msaApplication.setTrafficModelCode(tmCode);
@@ -564,11 +570,6 @@ public class DataAccessController {
             List<ApplicationTrafficData> applicationTrafficDataList = trafficeModelService.simulate(_start, _end, trafficModelExtracted.getTrafficModelConfigs(), applicationTraffic.getAppName());
             applicationTraffic.setApplicationTrafficDataList(applicationTrafficDataList);
 
-            // Convert to datetime
-            DateTime appStartDateTie = DateTime.parse(hashMap.get("startTime").toString());
-            DateTime appEndDateTime = DateTime.parse(hashMap.get("endTime").toString());
-            AbsoluteDate appAbsoluteStartDate = new AbsoluteDate(appStartDateTie.toDate(), TimeScalesFactory.getUTC());
-            AbsoluteDate appAbsoluteEndDate = new AbsoluteDate(appEndDateTime.toDate(), TimeScalesFactory.getUTC());
 
             ObjectMapper objectMapper = new ObjectMapper();
             // Loop on step base.
@@ -596,7 +597,7 @@ public class DataAccessController {
                         String idNext = shortestPath.getPathById().get(i+1);
 
                         // Distance
-                        distanceLinkedList.add(getDistance(idFirst, idNext, absoluteStartDate));
+                        distanceLinkedList.add(getDistance(idFirst, idNext, appAbsoluteStartDate));
                     }
                 }catch(OrekitException ex){
                     ex.printStackTrace();
@@ -1919,6 +1920,12 @@ public class DataAccessController {
     public void setConnectionDisplay(@RequestBody ConnDisplayDto connectionDisplay){
 
         System.out.println("Connection Display");
+
+    }
+
+    @PostMapping(value = "/mininet/update")
+    @ResponseStatus(HttpStatus.OK)
+    public void updateMininetResult(@RequestBody MininetDataDto mininetDataDto){
 
     }
 }
