@@ -23,12 +23,22 @@ var connectedObjectPolylines;
 var connectedObjectPolylinesCurrent;
 var pathRouthing = [];
 
+var dsGoodput;
+var dsAppDelay;
+var dsThoughPut;
+var dsPopDelay;
 var dgApplications;
 var chartApps;
+var chartGoodput;
+var chartThroughPut;
+var chartAppDelay;
+var chartPopDelay;
 
 //Stations
 var afMonitorStations;
 $(function(){
+
+    dsGoodput = [];
 
     // Init ground stations
     afMonitorStations = [
@@ -1150,6 +1160,7 @@ function initApplicationComponents(){
     }).dxDataGrid("instance");
 
     chartApps = $("#chartApps").dxChart({
+        dataSrouce: dsGoodput,
         palette: "soft",
         commonSeriesSettings: {
             argumentField: "timeString",
@@ -1194,6 +1205,192 @@ function initApplicationComponents(){
         //     }
         // }
     }).dxChart('instance');
+
+    chartGoodput = $("#chartGoodput").dxChart({
+        palette: "soft",
+        commonSeriesSettings: {
+            argumentField: "time",
+            valueField: "goodput",
+            barPadding: 0.2,
+            type: "bar"
+        },argumentAxis: {
+            argumentType: 'datetime'
+        },
+        legend: {
+            verticalAlignment: "bottom",
+            horizontalAlignment: "center"
+        },
+        title: {
+            text: "Applications GoodPut",
+            font: {
+                color: "white"
+            }
+        },
+        seriesTemplate: {
+            nameField: "app"
+        }
+        // argumentAxis: {
+        //     argumentType: 'number',
+        //     label: {
+        //         customizeText: function(obj) {
+        //             var currentTime = Cesium.JulianDate.clone(viewer.clock.startTime);
+        //             currentTime = Cesium.JulianDate.addSeconds(simulatorStartDateTime, obj.value, currentTime);
+        //             return moment(Cesium.JulianDate.toDate(currentTime).toISOString()).format('MMMM Do YYYY, h:mm:ss a');
+        //         },
+        //         font:{
+        //             color: '#57962B'
+        //         }
+        //     }
+        // },
+        // onLegendClick: function (e) {
+        //     var series = e.target;
+        //     if (series.isVisible()) {
+        //         series.hide();
+        //     } else {
+        //         series.show();
+        //     }
+        // }
+    }).dxChart('instance');
+
+    chartThroughPut = $("#chartThroughput").dxChart({
+        palette: "soft",
+        commonSeriesSettings: {
+            argumentField: "time",
+            valueField: "tput",
+            barPadding: 0.2,
+            type: "bar"
+        },argumentAxis: {
+            argumentType: 'datetime'
+        },
+        legend: {
+            verticalAlignment: "bottom",
+            horizontalAlignment: "center"
+        },
+        title: {
+            text: "CrossLink Throughput",
+            font: {
+                color: "white"
+            }
+        },
+        seriesTemplate: {
+            nameField: "app"
+        }
+        // argumentAxis: {
+        //     argumentType: 'number',
+        //     label: {
+        //         customizeText: function(obj) {
+        //             var currentTime = Cesium.JulianDate.clone(viewer.clock.startTime);
+        //             currentTime = Cesium.JulianDate.addSeconds(simulatorStartDateTime, obj.value, currentTime);
+        //             return moment(Cesium.JulianDate.toDate(currentTime).toISOString()).format('MMMM Do YYYY, h:mm:ss a');
+        //         },
+        //         font:{
+        //             color: '#57962B'
+        //         }
+        //     }
+        // },
+        // onLegendClick: function (e) {
+        //     var series = e.target;
+        //     if (series.isVisible()) {
+        //         series.hide();
+        //     } else {
+        //         series.show();
+        //     }
+        // }
+    }).dxChart('instance');
+
+    chartAppDelay = $("#applicationDelay").dxChart({
+        palette: "soft",
+        commonSeriesSettings: {
+            argumentField: "time",
+            valueField: "applicationDelay",
+            type: "spline",
+            hoverMode: "includePoints",
+        },argumentAxis: {
+            argumentType: 'datetime'
+        },
+        legend: {
+            verticalAlignment: "bottom",
+            horizontalAlignment: "center"
+        },
+        title: {
+            text: "Application Delay",
+            font: {
+                color: "white"
+            }
+        },
+        seriesTemplate: {
+            nameField: "app"
+        }
+        // argumentAxis: {
+        //     argumentType: 'number',
+        //     label: {
+        //         customizeText: function(obj) {
+        //             var currentTime = Cesium.JulianDate.clone(viewer.clock.startTime);
+        //             currentTime = Cesium.JulianDate.addSeconds(simulatorStartDateTime, obj.value, currentTime);
+        //             return moment(Cesium.JulianDate.toDate(currentTime).toISOString()).format('MMMM Do YYYY, h:mm:ss a');
+        //         },
+        //         font:{
+        //             color: '#57962B'
+        //         }
+        //     }
+        // },
+        // onLegendClick: function (e) {
+        //     var series = e.target;
+        //     if (series.isVisible()) {
+        //         series.hide();
+        //     } else {
+        //         series.show();
+        //     }
+        // }
+    }).dxChart('instance');
+
+    chartPopDelay = $("#chartPopDelay").dxChart({
+        palette: "soft",
+        commonSeriesSettings: {
+            argumentField: "time",
+            valueField: "pdelay",
+            type: "spline",
+            hoverMode: "includePoints",
+        },argumentAxis: {
+            argumentType: 'datetime'
+        },
+        legend: {
+            verticalAlignment: "bottom",
+            horizontalAlignment: "center"
+        },
+        title: {
+            text: "Propagation Delay",
+            font: {
+                color: "white"
+            }
+        },
+        seriesTemplate: {
+            nameField: "app"
+        }
+        // argumentAxis: {
+        //     argumentType: 'number',
+        //     label: {
+        //         customizeText: function(obj) {
+        //             var currentTime = Cesium.JulianDate.clone(viewer.clock.startTime);
+        //             currentTime = Cesium.JulianDate.addSeconds(simulatorStartDateTime, obj.value, currentTime);
+        //             return moment(Cesium.JulianDate.toDate(currentTime).toISOString()).format('MMMM Do YYYY, h:mm:ss a');
+        //         },
+        //         font:{
+        //             color: '#57962B'
+        //         }
+        //     }
+        // },
+        // onLegendClick: function (e) {
+        //     var series = e.target;
+        //     if (series.isVisible()) {
+        //         series.hide();
+        //     } else {
+        //         series.show();
+        //     }
+        // }
+    }).dxChart('instance');
+
+
 }
 
 /**
@@ -1209,6 +1406,17 @@ function initWebsocket(){
             var data = JSON.parse(e.body);
             progressBar.option('value', data.percentage);
             progressBar.option('statusFormat', function(event){return data.message + ": " + data.percentage + "%";});
+        });
+
+        stompClient.subscribe('/topic/mininet/update', function (e){
+
+            var data = JSON.parse(e.body);
+            dsGoodput.push(JSON.parse(data.data));
+            chartGoodput.option('dataSource', dsGoodput);
+            chartThroughPut.option('dataSource', dsGoodput);
+            chartAppDelay.option('dataSource', dsGoodput);
+            chartPopDelay.option('dataSource', dsGoodput);
+            console.log(data);
         });
     })
 }

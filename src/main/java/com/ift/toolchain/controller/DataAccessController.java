@@ -1923,9 +1923,19 @@ public class DataAccessController {
 
     }
 
+    ObjectMapper objectMapper = new ObjectMapper();
+
     @PostMapping(value = "/mininet/update")
     @ResponseStatus(HttpStatus.OK)
     public void updateMininetResult(@RequestBody MininetDataDto mininetDataDto){
+
+        System.out.println(mininetDataDto.toString());
+
+        try {
+            webSocket.convertAndSend("/topic/mininet/update", new MessageMininet(objectMapper.writeValueAsString(mininetDataDto)));
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
 
     }
 }
