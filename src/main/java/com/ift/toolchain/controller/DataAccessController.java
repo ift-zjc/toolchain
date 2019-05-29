@@ -267,7 +267,7 @@ public class DataAccessController {
 
                     // Send notification
                     try {
-                        socketService.sendDataToSocket(mininetIP, minietPort, "start");
+                        socketService.sendDataToSocket(mininetIP, minietPort, "s");
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -635,7 +635,7 @@ public class DataAccessController {
         simulateData.setApplicationTraffic(applicationTraffics);
 
         try {
-            socketService.sendDataToSocket(mininetIP, minietPort, "events");
+            socketService.sendDataToSocket(mininetIP, minietPort, "e");
         } catch (IOException e) {
             e.printStackTrace();
         }
