@@ -9,4 +9,5 @@ public class ApplicationEventDto {
     private String timetick;
     private float throughput;
     private String distance;
+    private float datavol;
 }

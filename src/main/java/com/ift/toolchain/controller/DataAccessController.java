@@ -1902,7 +1902,8 @@ public class DataAccessController {
             app.getApplicationEvents().forEach(applicationEvent -> {
                 ApplicationEventDto eventDto = new ApplicationEventDto();
                 eventDto.setPath(applicationEvent.getRouting());
-                eventDto.setThroughput(98+new Random().nextInt(2));
+                eventDto.setDatavol(new Random().nextInt(50));
+                eventDto.setThroughput(98+ new Random().nextInt(2));
                 eventDto.setTimetick(applicationEvent.getTick());
                 eventDto.setDistance(applicationEvent.getDistanceJson());
                 applicationEventDtos.add(eventDto);
