@@ -13,4 +13,5 @@ public interface TleRepository extends JpaRepository<Tle, String> {
     Tle getTleByName(String name);
     Optional<Tle> findByNumber(String number);
     List<Tle> getTleByEnabled(boolean enabled);
+    Optional<Tle> getTleByNumber(String number);
 }

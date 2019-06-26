@@ -1920,7 +1920,22 @@ public class DataAccessController {
     @ResponseStatus(HttpStatus.OK)
     public void setConnectionDisplay(@RequestBody ConnDisplayDto connectionDisplay){
 
+        // Update the id
+        connectionDisplay.getLinks().forEach(item -> {
+            Optional<Tle> tleSource = tleService.getTleByNumber(item.getSrce());
+            Optional<Tle> tleDest = tleService.getTleByNumber(item.getDest());
+            if(tleSource.isPresent() && tleDest.isPresent()){
+                item.setIdSource(tleSource.get().getName());
+                item.setIdDest(tleDest.get().getName());
+            }
+        });
         System.out.println("Connection Display");
+        // Send data to websock for display.
+        try{
+            webSocket.convertAndSend("/topic/api/update", new WebSocketMessage(objectMapper.writeValueAsString(connectionDisplay)));
+        }catch(JsonProcessingException e){
+            e.printStackTrace();
+        }
 
     }
 

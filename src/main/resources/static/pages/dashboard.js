@@ -1418,7 +1418,26 @@ function initWebsocket(){
             chartPopDelay.option('dataSource', dsGoodput);
             console.log(data);
         });
+
+        stompClient.subscribe('/topic/api/update', function (e){
+
+            var data = JSON.parse(JSON.parse(e.body).data);
+            var dataArray = data.links;
+            dataArray.forEach(drawLine);
+            console.log(dataArray);
+        })
     })
+}
+
+function drawLine(item){
+    // Get object
+    var objectSource = viewer.entities.getById(item.idSource);
+    var objectDest = viewer.entities.getById(item.idDest);
+
+    if(!_.isUndefined(objectSource) && !_.isUndefined(objectDest)){
+        // Draw the line
+        connectObject(item.idSource, item.idDest, false, false, item.color, item.thpt);
+    }
 }
 
 /**
@@ -1599,13 +1618,19 @@ function handleTick(clock){
  * @param sourceName
  * @param destName
  */
-function connectObject(sourceName, destName, followSurface, routing){
+function connectObject(sourceName, destName, followSurface, routing, color, width){
 
+    var _width = 1;
+    if(!_.isUndefined(width)){
+        _width = width;
+    }
     var _id = sourceName + '-' + destName;
     if(routing){
         pathRouthing.push(_id);
     }else{
-        connectedObjectPolylinesCurrent.push(_id);
+        if(!_.isUndefined(connectedObjectPolylinesCurrent)) {
+            connectedObjectPolylinesCurrent.push(_id);
+        }
     }
     // If already existing
     if(!_.isUndefined(viewer.entities.getById(_id))){
@@ -1624,15 +1649,24 @@ function connectObject(sourceName, destName, followSurface, routing){
         )
     ]);
 
+    var material;
+    if(color == "red"){
+        material = new Cesium.ColorMaterialProperty(
+            Cesium.Color.RED.withAlpha( 0.75 )
+        );
+    }if(color == "green"){
+        material = new Cesium.ColorMaterialProperty(
+            Cesium.Color.GREEN.withAlpha( 0.75 )
+        );
+    }
     // Connect two objects
     viewer.entities.add({
         id: sourceName + '-' + destName,
         polyline: {
             followSurface: followSurface,
             positions: positionArray,
-            material: new Cesium.ColorMaterialProperty(
-                Cesium.Color.RED.withAlpha( 0.75 )
-            )
+            material: material,
+            width: _width
         }
     });
 }

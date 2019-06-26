@@ -38,4 +38,4 @@ simulation:
 
 mininet:
   ip: 192.168.1.2
-  port: 2222
+  port: 65432

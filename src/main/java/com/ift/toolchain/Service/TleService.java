@@ -57,4 +57,14 @@ public class TleService {
     public void removeRecords(){
         tleRepository.deleteAll();
     }
+
+
+    /**
+     * Get Satellite by satellite number
+     * @param number
+     * @return
+     */
+    public Optional<Tle> getTleByNumber(String number){
+        return tleRepository.getTleByNumber(number);
+    }
 }
