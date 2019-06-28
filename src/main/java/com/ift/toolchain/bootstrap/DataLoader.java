@@ -228,6 +228,7 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
         groundStation.setX(-5.4631*1000000);
         groundStation.setY(-2.4802*1000000);
         groundStation.setZ(2.1570*1000000);
+        groundStation.setGsId(3);
         groundStationService.save(groundStation);
 
         groundStation = new GroundStation();
@@ -236,6 +237,7 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
         groundStation.setX(0.9189*1000000);
         groundStation.setY(-5.5343*1000000);
         groundStation.setZ(3.0242*1000000);
+        groundStation.setGsId(2);
         groundStationService.save(groundStation);
 
         groundStation = new GroundStation();
@@ -244,6 +246,7 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
         groundStation.setX(6.1200*1000000);
         groundStation.setY(-1.5663*1000000);
         groundStation.setZ(-0.8759*1000000);
+        groundStation.setGsId(4);
         groundStationService.save(groundStation);
 
         groundStation = new GroundStation();
@@ -252,6 +255,7 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
         groundStation.setX(1.9105*1000000);
         groundStation.setY(6.0311*1000000);
         groundStation.setZ(-0.8072*1000000);
+        groundStation.setGsId(5);
         groundStationService.save(groundStation);
 
         groundStation = new GroundStation();
@@ -260,6 +264,7 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
         groundStation.setX(-6.1610*1000000);
         groundStation.setY(1.3396*1000000);
         groundStation.setZ(0.9602*1000000);
+        groundStation.setGsId(6);
         groundStationService.save(groundStation);
 
         groundStation = new GroundStation();
@@ -268,6 +273,7 @@ public class DataLoader implements ApplicationListener<ContextRefreshedEvent> {
         groundStation.setX(-1.2482*1000000);
         groundStation.setY(-4.8176*1000000);
         groundStation.setZ(3.9758*1000000);
+        groundStation.setGsId(1);
         groundStationService.save(groundStation);
 
 

@@ -1920,8 +1920,13 @@ public class DataAccessController {
     @ResponseStatus(HttpStatus.OK)
     public void setConnectionDisplay(@RequestBody ConnDisplayDto connectionDisplay){
 
+        List<ConnDisplayItemDto> links = connectionDisplay.getLinks();
+
+        // Remove all those element with thpt == 0
+        links.removeIf(link -> link.getThpt() == 0f);
+
         // Update the id
-        connectionDisplay.getLinks().forEach(item -> {
+        links.forEach(item -> {
             Optional<Tle> tleSource = tleService.getTleByNumber(item.getSrce());
             Optional<Tle> tleDest = tleService.getTleByNumber(item.getDest());
             if(tleSource.isPresent() && tleDest.isPresent()){

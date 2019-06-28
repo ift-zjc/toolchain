@@ -24,6 +24,8 @@ public class GroundStation {
     private double y;
     private double z;
 
+    private int gsId;
+
     @OneToMany(mappedBy = "groundStation")
     private List<Parameter> stationParams;
 

@@ -22,6 +22,7 @@ var currentTick;
 var connectedObjectPolylines;
 var connectedObjectPolylinesCurrent;
 var pathRouthing = [];
+var visLinks = [];
 
 var dsGoodput;
 var dsAppDelay;
@@ -1423,6 +1424,10 @@ function initWebsocket(){
 
             var data = JSON.parse(JSON.parse(e.body).data);
             var dataArray = data.links;
+            // Remove previous lines first
+            _.each(visLinks, function(_id){
+                viewer.entities.removeById(_id);
+            });
             dataArray.forEach(drawLine);
             console.log(dataArray);
         })
@@ -1630,6 +1635,10 @@ function connectObject(sourceName, destName, followSurface, routing, color, widt
     }else{
         if(!_.isUndefined(connectedObjectPolylinesCurrent)) {
             connectedObjectPolylinesCurrent.push(_id);
+        }
+
+        if(!_.isUndefined(visLinks)){
+            visLinks.push(_id);
         }
     }
     // If already existing
