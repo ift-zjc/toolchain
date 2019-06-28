@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class GroundStationServiceImpl implements GroundStationService {
@@ -36,5 +37,10 @@ public class GroundStationServiceImpl implements GroundStationService {
     @Override
     public GroundStation findByGroundStationId(String stationId) {
         return groundStationRepository.findByStationId(stationId);
+    }
+
+    @Override
+    public Optional<GroundStation> findByGroundStationIdExternal(int gsId) {
+        return groundStationRepository.findByGsId(gsId);
     }
 }

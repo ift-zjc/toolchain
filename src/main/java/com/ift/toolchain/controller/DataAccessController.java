@@ -183,6 +183,7 @@ public class DataAccessController {
     }
 
 
+
     /**
      * Update file
      */
@@ -1927,11 +1928,38 @@ public class DataAccessController {
 
         // Update the id
         links.forEach(item -> {
+
+            String sourceId;
+            String destId;
+
             Optional<Tle> tleSource = tleService.getTleByNumber(item.getSrce());
+            if(tleSource.isPresent()){
+                sourceId = tleSource.get().getName();
+            }else{
+                // Try ground station
+                Optional<GroundStation> gs = groundStationService.findByGroundStationIdExternal(Integer.parseInt(item.getSrce()));
+                if(gs.isPresent()){
+                    sourceId = gs.get().getName();
+                }else{
+                    return;
+                }
+            }
             Optional<Tle> tleDest = tleService.getTleByNumber(item.getDest());
-            if(tleSource.isPresent() && tleDest.isPresent()){
-                item.setIdSource(tleSource.get().getName());
-                item.setIdDest(tleDest.get().getName());
+            if(tleDest.isPresent()){
+                destId = tleDest.get().getName();
+            }else{
+                // Try ground station
+                Optional<GroundStation> gs = groundStationService.findByGroundStationIdExternal(Integer.parseInt(item.getDest()));
+                if(gs.isPresent()){
+                    destId = gs.get().getName();
+                }else{
+                    return;
+                }
+            }
+
+            if(sourceId != null & destId != null){
+                item.setIdSource(sourceId);
+                item.setIdDest(destId);
             }
         });
         System.out.println("Connection Display");

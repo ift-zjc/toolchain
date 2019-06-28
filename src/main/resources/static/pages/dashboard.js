@@ -1428,6 +1428,9 @@ function initWebsocket(){
             _.each(visLinks, function(_id){
                 viewer.entities.removeById(_id);
             });
+            // Reset visLinks
+            visLinks = [];
+
             dataArray.forEach(drawLine);
             console.log(dataArray);
         })
