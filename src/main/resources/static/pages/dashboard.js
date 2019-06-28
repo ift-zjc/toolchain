@@ -1670,6 +1670,10 @@ function connectObject(sourceName, destName, followSurface, routing, color, widt
         material = new Cesium.ColorMaterialProperty(
             Cesium.Color.GREEN.withAlpha( 0.75 )
         );
+    }if(color == "yellow"){
+        material = new Cesium.ColorMaterialProperty(
+            Cesium.Color.YELLOW.withAlpha( 0.75 )
+        )
     }
     // Connect two objects
     viewer.entities.add({

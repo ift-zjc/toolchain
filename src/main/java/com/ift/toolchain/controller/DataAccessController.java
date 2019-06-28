@@ -1961,6 +1961,18 @@ public class DataAccessController {
                 item.setIdSource(sourceId);
                 item.setIdDest(destId);
             }
+
+            // Adjust the color
+            if(item.getPdelay()<200f){
+                item.setColor("green");
+            }else if(item.getPdelay()>400f){
+                item.setColor("red");
+            }else{
+                item.setColor("yellow");
+            }
+
+            // Adjust the width
+            item.setThpt((float)Math.log10(item.getThpt()) + 1f);
         });
         System.out.println("Connection Display");
         // Send data to websock for display.
