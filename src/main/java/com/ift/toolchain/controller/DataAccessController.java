@@ -701,6 +701,8 @@ public class DataAccessController {
                 propagator1.setSlaveMode();
                 SpacecraftState state1 = propagator1.propagate(startDate);
 
+                System.out.println("Working on Satellite: " + tleSource.getName()+ " | " + tleSource.getNumber());
+
                 // JSON Object
                 JSONObject sourceObj = new JSONObject();
                 sourceObj.put("sateName", tleSource.getName());
