@@ -752,7 +752,7 @@ public class DataAccessController {
                 // JSON Object
                 JSONObject sourceObj = new JSONObject();
                 sourceObj.put("BSName", gs.getName());
-                sourceObj.put("BSID", gs.getStationId());
+                sourceObj.put("BSID", gs.getGsId());
                 sourceObj.put("PosX", gs.getX());
                 sourceObj.put("PosY", gs.getY());
                 sourceObj.put("PosZ", gs.getZ());
