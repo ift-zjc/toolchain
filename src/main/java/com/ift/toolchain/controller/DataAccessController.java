@@ -693,7 +693,7 @@ public class DataAccessController {
         // Loop time step interval
         while (startDate.compareTo(endDate) <= 0) {
             // Loop through
-            for (int i = 0; i < tleDtos.size() - 1; i++) {
+            for (int i = 0; i < tleDtos.size() - 0; i++) {
 
                 Tle tleSource = tleDtos.get(i);
                 Orbit orbit1Init = this.getInitialOrb(tleDtos.get(i));
