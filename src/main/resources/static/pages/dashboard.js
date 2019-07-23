@@ -1433,7 +1433,11 @@ function initWebsocket(){
 
             dataArray.forEach(drawLine);
             console.log(dataArray);
-        })
+        });
+
+        stompClient.subscribe('/topic/mininet/vis', function (e) {
+
+        });
     })
 }
 

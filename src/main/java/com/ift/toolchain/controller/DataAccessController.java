@@ -1965,7 +1965,7 @@ public class DataAccessController {
             }
 
             // Adjust the color
-            if(item.getPdelay()<200f){
+            if(item.getPdelay()<20f){
                 item.setColor("green");
             }else if(item.getPdelay()>400f){
                 item.setColor("red");
@@ -2000,5 +2000,16 @@ public class DataAccessController {
             e.printStackTrace();
         }
 
+    }
+
+    @PostMapping(value = "/mininet/routing", produces = "application/json")
+    public void routingConnet(@RequestBody RoutingDto routingDto){
+
+        // Send data to front
+        try{
+            webSocket.convertAndSend("/topic/mininet/vis", new MessageMininet(objectMapper.writeValueAsString(routingDto)));
+        }catch (JsonProcessingException e){
+            e.printStackTrace();
+        }
     }
 }
