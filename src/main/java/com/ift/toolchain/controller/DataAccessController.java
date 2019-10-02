@@ -1825,7 +1825,6 @@ public class DataAccessController {
             GroundStation groundStation = (GroundStation) obj;
             vector3D = new Vector3D(groundStation.getX(),groundStation.getY(),groundStation.getZ());
         }
-
         return vector3D;
 
     }
